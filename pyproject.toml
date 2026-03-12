@@ -3,9 +3,9 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "leetcode-auto"
+name = "leetforge"
 version = "1.0.0"
-description = "LeetCode Hot100 每日同步工具 - 自动获取刷题记录并更新每日计划"
+description = "LeetForge — 你的 LeetCode Hot100 刷题锻造台。自动同步、智能复习、炫彩看板，一站搞定。"
 requires-python = ">=3.9"
 dependencies = [
     "requests",

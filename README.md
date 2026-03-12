@@ -1,191 +1,274 @@
-# LeetCode Hot100 每日同步工具
+<div align="center">
 
-自动从 LeetCode CN 获取当天 AC 记录，筛选 Hot100 题目，一键更新刷题计划。自带炫彩终端面板、交互式 Web 看板、热力图、智能复习提醒等全套可视化功能。
+# LeetForge
 
-## 功能一览
+**刷题如锻造，每遍皆淬炼。**
 
-| 命令 | 说明 |
-|------|------|
-| `leetcode` | 同步今日刷题记录 |
-| `leetcode --status` | 炫彩终端进度面板 + 智能复习提醒 |
-| `leetcode --heatmap` | GitHub 风格刷题热力图 |
-| `leetcode --web` | 交互式 Web 看板（ECharts 图表） |
-| `leetcode --weakness` | 分类薄弱点分析（能力雷达） |
-| `leetcode --report` | 生成每周报告 Markdown |
-| `leetcode --badge` | 生成 SVG 进度徽章 |
-| `leetcode --login` | 浏览器登录 LeetCode CN |
-| `leetcode --cron 23:00` | 每天定时自动同步 |
+你的 LeetCode Hot100 刷题锻造台 —— 自动同步、智能复习、炫彩看板，一站搞定。
 
-## 核心功能
+[![Python](https://img.shields.io/badge/Python-3.9+-3776ab?logo=python&logoColor=white)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
 
-**自动同步**
-- 调用 LeetCode CN GraphQL API 拉取当日 AC 提交
-- 自动匹配 Hot100 题目，区分新题 / 复习
-- 自动判断轮次（R1→R5），进度表写入完成日期
-- 追加每日打卡记录，刷新进度看板
+</div>
 
-**智能复习提醒**
-- 基于间隔重复（R2 +1天 / R3 +3天 / R4 +7天 / R5 +14天）
-- 按紧急程度排序，在终端和 Web 看板中展示
+---
 
-**卡点检测**
-- 自动检测提交 ≥ 3 次才 AC 的题目，写入打卡记录
+## Why LeetForge?
 
-**桌面通知**
-- 同步完成后弹系统通知（macOS / Linux / Windows）
+刷 Hot100 最痛的不是做题，而是 **记不住做了什么、不知道该复习什么、看不到进度**。
 
-## 可视化功能
+LeetForge 帮你解决这三个问题：
 
-### 炫彩终端面板 `--status`
+- **自动同步** — 每天自动拉取 LeetCode CN AC 记录，零手动输入
+- **间隔复习** — 基于艾宾浩斯遗忘曲线，精准推送今日待复习题目
+- **可视追踪** — 终端炫彩面板、Web 看板、热力图，进度一目了然
+
+## Quick Start
+
+```bash
+# 克隆 & 安装
+git clone https://github.com/HuangJingwang/leetcode_auto.git
+cd leetcode_auto
+pip install -e .
+
+# 首次运行（自动弹浏览器登录 + 同步）
+leetcode
+```
+
+首次运行会自动完成三件事：创建 `~/Desktop/刷题计划/` 文件夹 → 打开浏览器登录 LeetCode CN → 拉取今日 AC 记录并写入进度表。
+
+## Features
+
+### 一键同步
+
+```bash
+leetcode
+```
+
+自动拉取今日 AC 提交，匹配 Hot100 题目，智能判断当前轮次（R1→R5），在进度表中写入完成日期。同时追加每日打卡记录、刷新进度看板，完成后弹桌面通知。
+
+### 炫彩终端面板
+
+```bash
+leetcode --status
+```
 
 ```
 ╔══════════════════════════════════════════════╗
-║ 🎯 LeetCode Hot100 刷题进度                    ║
+║       🎯 LeetCode Hot100 刷题进度             ║
 ╚══════════════════════════════════════════════╝
-╭── 总览 ──╮  ╭── 各轮进度 ──╮  ╭── 分类薄弱点 ──╮
-│ 题目 101 │  │ R1 ████░ 21  │  │ 二分查找  ⚡   │
-│ 轮次 4.2%│  │ R2 ░░░░░  0  │  │ 回溯     ⚡   │
-│ 全通 0   │  │ ...          │  │ 动态规划  📝   │
-╰──────────╯  ╰──────────────╯  ╰────────────────╯
+┌─ 总览 ──────────────────────────────────────┐
+│ 题目总数    101                              │
+│ 已完成轮次  21/505 (4.2%)                    │
+│ 连续打卡    7 天 🔥                          │
+└─────────────────────────────────────────────┘
+┌─ 各轮进度 ──────────────────────────────────┐
+│ R1  ━━━━━━━──────────────────  21/101       │
+│ R2  ─────────────────────────   0/101       │
+│ R3  ─────────────────────────   0/101       │
+└─────────────────────────────────────────────┘
+┌─ 今日到期复习（5 题）──────────────────────── ┐
+│ R2  两数之和             今日到期             │
+│ R2  三数之和             逾期 2 天            │
+└─────────────────────────────────────────────┘
 ```
 
-用 [Rich](https://github.com/Textualize/rich) 库渲染，包含：总览面板、彩色进度条、分类薄弱点、智能复习提醒、新题建议。
+基于 [Rich](https://github.com/Textualize/rich) 渲染，包含总览、各轮进度条、分类薄弱点、智能复习提醒、新题建议。
 
-### 刷题热力图 `--heatmap`
+### 刷题热力图
 
-```
-╭────── 刷题热力图（近 6 个月）──────╮
-│ Mon ░ ░ ▒ ░ ░ █ ░ ░ ░ ░ ▓ ░ ░ ... │
-│ Wed ░ ░ ░ ░ ░ ░ ░ ▒ ░ ░ ░ ░ ░ ... │
-│ Fri ░ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ... │
-│  Less ░ ▒ ▓ █ More                 │
-╰─────────────────────────────────────╯
+```bash
+leetcode --heatmap
 ```
 
-GitHub Contribution 风格，在终端中直接渲染，直观展示每日刷题密度。
+```
+╭───── 刷题热力图（近 6 个月）─────╮
+│ Mon ░ ░ ▒ ░ ░ █ ░ ░ ░ ░ ▓ ░ ░  │
+│ Wed ░ ░ ░ ░ ░ ░ ░ ▒ ░ ░ ░ ░ ░  │
+│ Fri ░ ▒ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░ ░  │
+│  Less ░ ▒ ▓ █ More              │
+╰──────────────────────────────────╯
+```
 
-### Web 看板 `--web`
+GitHub Contribution 风格，在终端中渲染每日刷题密度。
+
+### Web 看板
 
 ```bash
 leetcode --web          # 默认端口 8100
 leetcode --web 3000     # 自定义端口
 ```
 
-自动打开浏览器，展示 GitHub 暗色风格的交互式看板：
+自动打开浏览器，GitHub 暗色风格交互式看板，包含：
 
-- **完成率仪表盘** — 环形百分比
-- **各轮进度柱状图** — R1~R5 彩色柱状图
-- **分类能力雷达图** — 15 个算法分类的掌握程度
-- **每日刷题趋势** — 近 60 天新题/复习堆叠柱状图
-- **年度热力图** — ECharts 日历热力图
+| 图表 | 说明 |
+|------|------|
+| 仪表盘 | 环形完成率百分比 |
+| 柱状图 | R1~R5 各轮完成数对比 |
+| 雷达图 | 15 个算法分类掌握度 |
+| 趋势图 | 近 60 天新题/复习堆叠柱状图 |
+| 热力图 | ECharts 年度日历热力图 |
 
-### 分类薄弱点 `--weakness`
+### 更多命令
+
+| 命令 | 说明 |
+|:-----|:-----|
+| `leetcode --weakness` | 分类薄弱点分析 + 能力雷达图 |
+| `leetcode --report` | 生成每周报告（Markdown） |
+| `leetcode --badge` | 生成 SVG 进度徽章，可嵌入 GitHub Profile |
+| `leetcode --login` | 重新打开浏览器登录 |
+| `leetcode --cron 23:00` | 每天定时自动同步 |
+
+## How It Works
 
 ```
-┌──────────┬──────┬────────────────┬──────┐
-│ 分类     │ 题数 │ R1 完成率      │ 建议 │
-├──────────┼──────┼────────────────┼──────┤
-│ 二分查找 │  4   │ ░░░░░░░░ 0%    │ ⚡   │
-│ 动态规划 │ 20   │ █████░░░ 45%   │ 📝   │
-│ 堆       │  2   │ ██████░░ 50%   │ 📝   │
-└──────────┴──────┴────────────────┴──────┘
+┌───────────┐    GraphQL API    ┌──────────────┐
+│ LeetCode  │ ◄──────────────── │  LeetForge   │
+│    CN     │  fetch AC records │              │
+└───────────┘                   │  ┌─ sync ──┐ │     ┌─────────────────────┐
+                                │  │ match   │ │────►│ ~/Desktop/刷题计划/  │
+                                │  │ Hot100  │ │     │  01_进度表.md        │
+                                │  │ update  │ │     │  02_每日打卡.md      │
+                                │  │ rounds  │ │     │  03_进度看板.md      │
+                                │  └─────────┘ │     └─────────────────────┘
+                                │              │
+                                │  ┌─ views ─┐ │     ┌─────────────────────┐
+                                │  │ Rich TUI│ │────►│ Terminal / Browser  │
+                                │  │ Web UI  │ │     └─────────────────────┘
+                                │  │ Heatmap │ │
+                                │  └─────────┘ │
+                                └──────────────┘
 ```
 
-包含按 R1 完成率排序的表格 + 能力雷达图（🔴 🟡 🟢 三色标识）。
+**间隔复习算法：**
 
-### 每周报告 `--report`
+| 轮次 | 间隔 | 含义 |
+|:----:|:----:|:-----|
+| R1 | — | 首次做题 |
+| R2 | +1 天 | 次日巩固 |
+| R3 | +3 天 | 短期记忆 |
+| R4 | +7 天 | 中期巩固 |
+| R5 | +14 天 | 长期记忆 |
 
-自动生成周报 Markdown 文件到刷题计划文件夹，包含：
-- 本周概况（打卡天数、新题、复习、总计、趋势对比）
-- 总体进度
-- 薄弱分类 TOP 3
-- 下周建议
+LeetForge 自动追踪每道题的 R1~R5 完成日期，精准计算哪些题今日到期需要复习。
 
-### SVG 进度徽章 `--badge`
+## Installation
 
-生成 `progress_badge.svg` 到刷题计划文件夹，可嵌入 GitHub README：
-
-```markdown
-![LeetCode Hot100](./progress_badge.svg)
-```
-
-## 安装
+### 一键安装（推荐）
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/HuangJingwang/leetcode_auto.git
 cd leetcode_auto
 ./install.sh
 ```
 
-安装脚本会自动检测 Python 环境、安装依赖、注册全局命令 `leetcode`。首次运行时还会自动下载浏览器引擎。
+脚本自动检测 Python 环境、安装依赖、注册 `leetcode` 全局命令。
 
 ### 手动安装
 
 ```bash
+git clone https://github.com/HuangJingwang/leetcode_auto.git
+cd leetcode_auto
 pip install -e .
 ```
 
-## 快速开始
+> **依赖**：Python 3.9+ / requests / playwright / rich / schedule / python-dotenv
+>
+> 首次运行时自动下载 Chromium 浏览器引擎（用于自动登录）。
+
+## Configuration
+
+所有配置存放在 `~/.leetcode_auto/` 目录下：
+
+| 文件 | 说明 |
+|:-----|:-----|
+| `cookies.json` | 浏览器登录后自动保存的凭证 |
+| `.env` | 可选的手动配置文件 |
+
+### 自定义计划路径
+
+默认输出到 `~/Desktop/刷题计划/`，可通过环境变量修改：
 
 ```bash
-# 1. 首次运行：自动创建文件夹 + 弹浏览器登录 + 同步
-leetcode
-
-# 2. 查看进度
-leetcode --status
-
-# 3. 打开 Web 看板
-leetcode --web
-
-# 4. 每天定时自动同步
-leetcode --cron 23:00
+# ~/.leetcode_auto/.env
+PLAN_DIR=/your/custom/path
 ```
 
-## 项目结构
+### 手动配置 Cookie（不使用浏览器登录）
+
+```bash
+# ~/.leetcode_auto/.env
+LEETCODE_USERNAME=your-slug
+LEETCODE_SESSION=xxx
+CSRF_TOKEN=xxx
+```
+
+## Project Structure
 
 ```
 leetcode_auto/
 ├── install.sh              # 一键安装脚本
-├── pyproject.toml          # 包配置 + 依赖 + 命令入口
+├── pyproject.toml          # 包元信息 + 依赖 + CLI 入口
 ├── setup.py                # pip 向后兼容
-├── README.md
-├── .env.example            # 手动配置模板
-└── leetcode_auto/          # Python 包
+├── .env.example            # 配置模板
+└── leetcode_auto/
     ├── __init__.py
-    ├── config.py            # 配置加载
-    ├── init_plan.py         # 题目列表 + 分类标签 + 模板生成
-    ├── sync.py              # 核心同步 + CLI 入口
-    ├── features.py          # Rich TUI / 热力图 / 徽章 / 薄弱点 / 周报
-    └── web.py               # Web 看板（HTTP 服务 + ECharts）
+    ├── config.py            # 配置加载 & 凭证管理
+    ├── init_plan.py         # Hot100 题目列表 + 分类标签 + 模板生成
+    ├── sync.py              # 核心同步引擎 + CLI 入口
+    ├── features.py          # 可视化：Rich TUI / 热力图 / 徽章 / 周报
+    └── web.py               # Web 看板：HTTP 服务 + ECharts 前端
 ```
 
-## 数据目录
+## FAQ
 
-| 路径 | 说明 |
-|------|------|
-| `~/.leetcode_auto/cookies.json` | 登录凭证 |
-| `~/.leetcode_auto/.env` | 可选手动配置 |
-| `~/Desktop/刷题计划/` | 刷题计划文件夹（可通过 `PLAN_DIR` 自定义） |
+<details>
+<summary><b>Cookie 过期了怎么办？</b></summary>
 
-## 常见问题
-
-**Q: Cookie 过期了怎么办？**
 直接运行 `leetcode`，会自动检测并弹浏览器重新登录。也可 `leetcode --login` 强制重登。
+</details>
 
-**Q: 如何修改计划文件夹路径？**
-在 `~/.leetcode_auto/.env` 中添加 `PLAN_DIR=/your/path`。
+<details>
+<summary><b>智能复习是怎么算的？</b></summary>
 
-**Q: 智能复习怎么算的？**
-间隔重复：R1 完成后 1 天 → R2，3 天 → R3，7 天 → R4，14 天 → R5。`--status` 按逾期天数排序。
+基于间隔重复：R1 做完后 1 天到期 R2，3 天后到期 R3，7 天后到期 R4，14 天后到期 R5。`--status` 面板按逾期天数排序展示。
+</details>
 
-**Q: 卡点检测的标准？**
-同一道题今日提交 ≥ 3 次才 AC 即为卡点。
+<details>
+<summary><b>什么是"卡点题目"？</b></summary>
 
-**Q: Web 看板需要联网吗？**
-需要（加载 ECharts CDN），数据本身全在本地。
+同一道题当天提交 ≥ 3 次才 AC，说明这道题有难度。LeetForge 自动检测并写入打卡记录，方便后续重点复习。
+</details>
 
-**Q: 不想装浏览器引擎，可以手动配 Cookie 吗？**
-可以。在 `~/.leetcode_auto/.env` 中填写 `LEETCODE_USERNAME`、`LEETCODE_SESSION`、`CSRF_TOKEN`。
+<details>
+<summary><b>Web 看板需要联网吗？</b></summary>
 
-**Q: 桌面通知没弹出？**
-macOS 需在"系统设置 > 通知"中允许终端发通知。Linux 需安装 `libnotify`。
+需要加载 ECharts CDN 资源，数据本身全在本地。
+</details>
+
+<details>
+<summary><b>不想装浏览器引擎怎么办？</b></summary>
+
+可以在 `~/.leetcode_auto/.env` 中手动填写 Cookie，跳过浏览器登录。
+</details>
+
+<details>
+<summary><b>支持哪些系统？</b></summary>
+
+macOS / Linux / Windows 均可使用。桌面通知分别适配了 osascript / notify-send / PowerShell。
+</details>
+
+## Contributing
+
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 `git checkout -b feature/amazing-feature`
+3. 提交修改 `git commit -m 'Add amazing feature'`
+4. 推送分支 `git push origin feature/amazing-feature`
+5. 提交 Pull Request
+
+## License
+
+[MIT](LICENSE) &copy; 2025 LeetForge
