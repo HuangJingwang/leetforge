@@ -103,11 +103,13 @@ def check_session(session: str, csrf: str) -> SessionCheckResult:
 
 
 def _ensure_chromium():
-    try:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as p:
-            p.chromium.executable_path
-    except Exception:
+    """检查 Chromium 是否已安装，未安装则自动下载。"""
+    from pathlib import Path
+    cache_dir = Path.home() / "Library" / "Caches" / "ms-playwright"
+    if not cache_dir.exists():
+        cache_dir = Path.home() / ".cache" / "ms-playwright"
+    has_chromium = any(cache_dir.glob("chromium-*/")) if cache_dir.exists() else False
+    if not has_chromium:
         print("正在安装 Chromium 浏览器引擎（仅首次需要）...")
         subprocess.run(
             [sys.executable, "-m", "playwright", "install", "chromium"],
@@ -125,41 +127,68 @@ def browser_login() -> dict:
         print("  pip install playwright")
         sys.exit(1)
 
-    _ensure_chromium()
-    print("正在启动浏览器...\n")
+    print("正在启动浏览器...\n", flush=True)
+
+    stealth_args = [
+        "--disable-blink-features=AutomationControlled",
+        "--disable-infobars",
+        "--no-first-run",
+        "--no-default-browser-check",
+    ]
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        context = browser.new_context()
+        try:
+            browser = p.chromium.launch(headless=False, channel="chrome", args=stealth_args)
+        except Exception:
+            _ensure_chromium()
+            browser = p.chromium.launch(headless=False, args=stealth_args)
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/131.0.0.0 Safari/537.36",
+            locale="zh-CN",
+        )
+        context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            Object.defineProperty(navigator, 'languages', { get: () => ['zh-CN', 'zh', 'en'] });
+            Object.defineProperty(navigator, 'plugins', {
+                get: () => [1, 2, 3, 4, 5],
+            });
+            window.chrome = { runtime: {} };
+        """)
         page = context.new_page()
         page.goto("https://leetcode.cn/accounts/login/")
 
-        print("请在浏览器中完成登录（支持账号密码、微信、GitHub 等方式）")
-        print("登录成功后会自动检测，无需手动操作...\n")
+        print("请在浏览器中完成登录（支持账号密码、微信、GitHub、QQ 等方式）", flush=True)
+        print("登录成功后会自动检测，无需手动操作...\n", flush=True)
 
-        try:
-            page.wait_for_url(
-                lambda url: "leetcode.cn" in url and "/accounts/login" not in url,
-                timeout=300_000,
-            )
-        except Exception:
-            print("超时（5 分钟内未检测到登录），请重试。")
+        import time as _time
+        deadline = _time.time() + 300
+        session_val = ""
+        csrf_val = ""
+        while _time.time() < deadline:
+            try:
+                for c in context.cookies("https://leetcode.cn"):
+                    if c["name"] == "LEETCODE_SESSION":
+                        session_val = c["value"]
+                    elif c["name"] == "csrftoken":
+                        csrf_val = c["value"]
+            except Exception:
+                pass
+            if session_val:
+                page.wait_for_timeout(1000)
+                break
+            page.wait_for_timeout(1500)
+
+        if not session_val:
+            print("超时（5 分钟内未检测到登录），请重试。", flush=True)
             browser.close()
             sys.exit(1)
 
-        page.wait_for_timeout(2000)
-        cookies = context.cookies("https://leetcode.cn")
-        session_val = ""
-        csrf_val = ""
-        for c in cookies:
-            if c["name"] == "LEETCODE_SESSION":
-                session_val = c["value"]
-            elif c["name"] == "csrftoken":
-                csrf_val = c["value"]
         browser.close()
 
     if not session_val:
-        print("未检测到 LEETCODE_SESSION Cookie，登录可能未成功，请重试。")
+        print("未检测到 LEETCODE_SESSION Cookie，登录可能未成功，请重试。", flush=True)
         sys.exit(1)
 
     result = check_session(session_val, csrf_val)
@@ -171,8 +200,8 @@ def browser_login() -> dict:
         "saved_at": datetime.now(CST).isoformat(),
     }
     COOKIES_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"登录成功！用户：{username}")
-    print(f"Cookie 已保存到 {COOKIES_FILE}\n")
+    print(f"登录成功！用户：{username}", flush=True)
+    print(f"Cookie 已保存到 {COOKIES_FILE}\n", flush=True)
     return {"username": username, "session": session_val, "csrf": csrf_val}
 
 
@@ -180,24 +209,24 @@ def ensure_credentials(interactive: bool = True) -> dict:
     """加载并验证凭证。interactive=False 时不弹浏览器，凭证失效则返回空。"""
     creds = load_credentials()
     if creds["session"]:
-        print("正在检查登录状态...")
+        print("正在检查登录状态...", flush=True)
         result = check_session(creds["session"], creds["csrf"])
         if result.username:
-            print(f"已登录：{result.username}\n")
+            print(f"已登录：{result.username}\n", flush=True)
             creds["username"] = result.username
             return creds
         if result.network_error:
-            print("网络连接失败，跳过登录检查，使用缓存凭证继续。\n")
+            print("网络连接失败，跳过登录检查，使用缓存凭证继续。\n", flush=True)
             return creds
         if not interactive:
-            print("Cookie 已过期，请手动运行 leetcode --login 重新登录。")
+            print("Cookie 已过期，请手动运行 leetcode --login 重新登录。", flush=True)
             return {}
-        print("Cookie 已过期，需要重新登录。\n")
+        print("Cookie 已过期，需要重新登录。\n", flush=True)
     else:
         if not interactive:
-            print("未找到登录凭证，请手动运行 leetcode --login 登录。")
+            print("未找到登录凭证，请手动运行 leetcode --login 登录。", flush=True)
             return {}
-        print("未找到登录凭证，需要登录。\n")
+        print("未找到登录凭证，需要登录。\n", flush=True)
     return browser_login()
 
 
