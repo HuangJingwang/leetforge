@@ -154,23 +154,25 @@ leetcode --web 3000     # 自定义端口
 ## How It Works
 
 ```
-┌───────────┐    GraphQL API    ┌──────────────┐
-│ LeetCode  │ ◄──────────────── │  LeetForge   │
-│    CN     │  fetch AC records │              │
-└───────────┘                   │  ┌─ sync ──┐ │     ┌─────────────────────┐
-                                │  │ match   │ │────►│ ~/Desktop/刷题计划/  │
-                                │  │ Hot100  │ │     │  01_进度表.md        │
-                                │  │ update  │ │     │  02_每日打卡.md      │
-                                │  │ rounds  │ │     │  03_进度看板.md      │
-                                │  └─────────┘ │     └─────────────────────┘
-                                │              │
-                                │  ┌─ views ─┐ │     ┌─────────────────────┐
-                                │  │ Rich TUI│ │────►│ Terminal / Browser  │
-                                │  │ Web UI  │ │     └─────────────────────┘
-                                │  │ Heatmap │ │
-                                │  └─────────┘ │
-                                └──────────────┘
+┌───────────┐   submissionList   ┌──────────────┐
+│ LeetCode  │ ◄───────────────── │  LeetForge   │
+│    CN     │  GraphQL API       │              │
+└───────────┘  (filter AC,       │  ┌─ sync ──┐ │     ┌─────────────────────┐
+                extract slug     │  │ match   │ │────►│ ~/Desktop/刷题计划/  │
+                from url field)  │  │ Hot100  │ │     │  01_进度表.md        │
+                                 │  │ update  │ │     │  02_每日打卡.md      │
+                                 │  │ rounds  │ │     │  03_进度看板.md      │
+                                 │  └─────────┘ │     └─────────────────────┘
+                                 │              │
+                                 │  ┌─ views ─┐ │     ┌─────────────────────┐
+                                 │  │ Rich TUI│ │────►│ Terminal / Browser  │
+                                 │  │ Web UI  │ │     └─────────────────────┘
+                                 │  │ Heatmap │ │
+                                 │  └─────────┘ │
+                                 └──────────────┘
 ```
+
+> **API 说明**：LeetCode CN 已下线 `recentACSubmissions` 和 `recentSubmissions` 字段，LeetForge 现统一使用 `submissionList` 接口，通过返回的 `url` 字段（`/problems/{titleSlug}/submissions/...`）解析题目标识。
 
 **间隔复习算法：**
 
@@ -258,7 +260,8 @@ leetcode_auto/
 <details>
 <summary><b>Cookie 过期了怎么办？</b></summary>
 
-直接运行 `leetcode`，会自动检测并弹浏览器重新登录。也可 `leetcode --login` 强制重登。
+- **交互模式**（直接运行 `leetcode`）：自动检测 Cookie 状态，过期则弹浏览器重新登录。也可 `leetcode --login` 强制重登。
+- **后台 daemon 模式**：不会弹浏览器（无交互环境），仅打印提示 `Cookie 已过期，请手动运行 leetcode --login 重新登录`，同步跳过。请在终端执行一次 `leetcode --login` 刷新凭证。
 </details>
 
 <details>
