@@ -702,7 +702,6 @@ def sync(interactive: bool = True):
 
     if not today_subs:
         print("\n今日暂无 AC 提交，无需更新。")
-        send_notification("LeetCode 同步", "今日暂无 AC 提交")
         return
 
     print("\n2. 正在检测卡点题目...")
@@ -851,6 +850,50 @@ def cmd_weakness():
     print_weakness_analysis(rows)
 
 
+def remind():
+    """计算今日待刷/待复习题目，发送桌面通知。"""
+    ensure_plan_files(PLAN_DIR, PROGRESS_FILE, CHECKIN_FILE, DASHBOARD_FILE)
+    _, rows = parse_progress_table(PROGRESS_FILE)
+    today_date = date.today()
+
+    # 待复习题目
+    review_due = _get_review_due(rows, today_date)
+
+    # R1 未做的新题（取前 5 道）
+    new_todo = [
+        _display_title(r["title"])
+        for r in rows if not _is_round_done(r["r1"])
+    ][:5]
+
+    # 构建通知内容
+    parts = []
+    if review_due:
+        review_names = [it["title"] for it in review_due[:5]]
+        parts.append(f"待复习 {len(review_due)} 题：{'、'.join(review_names)}")
+    if new_todo:
+        parts.append(f"新题推荐：{'、'.join(new_todo)}")
+
+    if parts:
+        msg = "\n".join(parts)
+    else:
+        msg = "今日无待复习题目，继续保持！"
+
+    # 终端输出
+    print(f"=== LeetCode 每日提醒 ({today_date}) ===\n")
+    if review_due:
+        print(f"待复习（{len(review_due)} 题）：")
+        for it in review_due[:10]:
+            flag = f"逾期 {it['overdue']} 天" if it["overdue"] > 0 else "今日到期"
+            print(f"  - [{it['round']}] {it['title']}（{flag}）")
+    if new_todo:
+        print(f"\n新题推荐：{'、'.join(new_todo)}")
+    if not review_due and not new_todo:
+        print("今日无待复习题目，继续保持！")
+
+    send_notification("LeetCode 每日提醒", msg)
+    print("\n已发送桌面通知。")
+
+
 def cmd_daemon(arg: str):
     from .daemon import install_daemon, uninstall_daemon, daemon_status
     if arg == "status":
@@ -859,6 +902,16 @@ def cmd_daemon(arg: str):
         uninstall_daemon()
     else:
         install_daemon(arg)
+
+
+def cmd_remind_daemon(arg: str):
+    from .daemon import install_remind_daemon, uninstall_remind_daemon, remind_daemon_status
+    if arg == "status":
+        remind_daemon_status()
+    elif arg == "stop":
+        uninstall_remind_daemon()
+    else:
+        install_remind_daemon()
 
 
 def cmd_report():
@@ -889,6 +942,10 @@ def main():
             "  leetcode --daemon 23:00  每天 23:00 后台同步\n"
             "  leetcode --daemon status 查看后台任务状态\n"
             "  leetcode --daemon stop   卸载后台定时任务\n"
+            "  leetcode --remind           查看今日待刷/待复习题目\n"
+            "  leetcode --remind-daemon    注册每日提醒（10:00/17:00/22:00）\n"
+            "  leetcode --remind-daemon status  查看提醒任务状态\n"
+            "  leetcode --remind-daemon stop    卸载提醒任务\n"
         ),
     )
     parser.add_argument("--login", action="store_true",
@@ -908,6 +965,11 @@ def main():
     parser.add_argument("--daemon", nargs="?", const="status",
                         metavar="SCHEDULE",
                         help="后台定时任务：30m/1h/23:00/status/stop")
+    parser.add_argument("--remind", action="store_true",
+                        help="查看今日待刷/待复习题目并发送通知")
+    parser.add_argument("--remind-daemon", nargs="?", const="start",
+                        metavar="ACTION",
+                        help="每日提醒定时任务（10:00/17:00/22:00）：start/status/stop")
     parser.add_argument("--cron", metavar="HH:MM",
                         help="前台定时同步（终端保持运行）")
     args = parser.parse_args()
@@ -926,8 +988,12 @@ def main():
         cmd_weakness()
     elif args.report:
         cmd_report()
+    elif args.remind:
+        remind()
     elif args.daemon is not None:
         cmd_daemon(args.daemon)
+    elif args.remind_daemon is not None:
+        cmd_remind_daemon(args.remind_daemon)
     elif args.cron:
         cron_loop(args.cron)
     else:

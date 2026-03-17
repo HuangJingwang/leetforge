@@ -23,8 +23,12 @@ from typing import Optional
 from .config import DATA_DIR
 
 SERVICE_ID = "com.leetforge.sync"
+REMIND_SERVICE_ID = "com.leetforge.remind"
 LOG_FILE = DATA_DIR / "sync.log"
+REMIND_LOG_FILE = DATA_DIR / "remind.log"
 SCHEDULE_FILE = DATA_DIR / "daemon_schedule.json"
+
+REMIND_HOURS = [(10, 0), (17, 0), (22, 0)]
 
 
 def _find_leetcode_bin() -> str:
@@ -124,12 +128,12 @@ _PLIST_DIR = Path.home() / "Library" / "LaunchAgents"
 _PLIST_FILE = _PLIST_DIR / f"{SERVICE_ID}.plist"
 
 
-def _plist_program_args() -> str:
+def _plist_program_args(extra_args: list = None) -> str:
     lc_bin = _find_leetcode_bin()
-    if " " in lc_bin:
-        parts = lc_bin.split()
-        return "\n".join(f"        <string>{p}</string>" for p in parts)
-    return f"        <string>{lc_bin}</string>"
+    parts = lc_bin.split() if " " in lc_bin else [lc_bin]
+    if extra_args:
+        parts.extend(extra_args)
+    return "\n".join(f"        <string>{p}</string>" for p in parts)
 
 
 def _plist_content(sched: Schedule) -> str:
@@ -454,5 +458,237 @@ def daemon_status():
         _status_linux()
     elif system == "Windows":
         _status_windows()
+    else:
+        print(f"不支持的系统：{system}")
+
+
+# ---------------------------------------------------------------------------
+# 每日提醒守护
+# ---------------------------------------------------------------------------
+
+_REMIND_PLIST_FILE = _PLIST_DIR / f"{REMIND_SERVICE_ID}.plist"
+_REMIND_SERVICE_FILE = _SYSTEMD_DIR / "leetforge-remind.service"
+_REMIND_TIMER_FILE = _SYSTEMD_DIR / "leetforge-remind.timer"
+_REMIND_TASK_PREFIX = "LeetForge-Remind"
+
+
+def _remind_times_str() -> str:
+    return "、".join(f"{h:02d}:{m:02d}" for h, m in REMIND_HOURS)
+
+
+# --- macOS ---
+
+def _remind_plist_content() -> str:
+    prog = _plist_program_args(["--remind"])
+    path_env = os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin")
+    entries = "\n".join(
+        f"        <dict>\n"
+        f"            <key>Hour</key>\n"
+        f"            <integer>{h}</integer>\n"
+        f"            <key>Minute</key>\n"
+        f"            <integer>{m}</integer>\n"
+        f"        </dict>"
+        for h, m in REMIND_HOURS
+    )
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{REMIND_SERVICE_ID}</string>
+
+    <key>ProgramArguments</key>
+    <array>
+{prog}
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <array>
+{entries}
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>{REMIND_LOG_FILE}</string>
+    <key>StandardErrorPath</key>
+    <string>{REMIND_LOG_FILE}</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>{path_env}</string>
+    </dict>
+</dict>
+</plist>"""
+
+
+def _install_remind_macos():
+    _PLIST_DIR.mkdir(parents=True, exist_ok=True)
+    _unload_remind_macos(quiet=True)
+    _REMIND_PLIST_FILE.write_text(_remind_plist_content(), encoding="utf-8")
+    subprocess.run(["launchctl", "load", str(_REMIND_PLIST_FILE)], check=True)
+    print(f"已注册每日提醒，每天 {_remind_times_str()} 推送通知。")
+    print(f"日志文件：{REMIND_LOG_FILE}")
+
+
+def _unload_remind_macos(quiet: bool = False):
+    if _REMIND_PLIST_FILE.exists():
+        subprocess.run(["launchctl", "unload", str(_REMIND_PLIST_FILE)],
+                       capture_output=True)
+        _REMIND_PLIST_FILE.unlink()
+        if not quiet:
+            print("已卸载每日提醒。")
+    elif not quiet:
+        print("未找到已注册的提醒任务。")
+
+
+def _status_remind_macos():
+    result = subprocess.run(["launchctl", "list"],
+                            capture_output=True, text=True)
+    for line in result.stdout.splitlines():
+        if REMIND_SERVICE_ID in line:
+            print(f"状态：已注册")
+            print(f"提醒时间：每天 {_remind_times_str()}")
+            print(f"日志：{REMIND_LOG_FILE}")
+            return
+    print("状态：未注册")
+    print("启用：leetcode --remind-daemon")
+
+
+# --- Linux ---
+
+def _install_remind_linux():
+    lc_bin = _find_leetcode_bin()
+    _SYSTEMD_DIR.mkdir(parents=True, exist_ok=True)
+    _REMIND_SERVICE_FILE.write_text(
+        f"[Unit]\nDescription=LeetForge reminder\n\n"
+        f"[Service]\nType=oneshot\n"
+        f"ExecStart={lc_bin} --remind\n"
+        f"StandardOutput=append:{REMIND_LOG_FILE}\n"
+        f"StandardError=append:{REMIND_LOG_FILE}\n"
+        f"Environment=PATH={os.environ.get('PATH', '/usr/local/bin:/usr/bin:/bin')}\n",
+        encoding="utf-8",
+    )
+    on_calendars = "\n".join(
+        f"OnCalendar=*-*-* {h:02d}:{m:02d}:00" for h, m in REMIND_HOURS)
+    _REMIND_TIMER_FILE.write_text(
+        f"[Unit]\nDescription=LeetForge reminder timer\n\n"
+        f"[Timer]\n{on_calendars}\nPersistent=true\n\n"
+        f"[Install]\nWantedBy=timers.target\n",
+        encoding="utf-8",
+    )
+    subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
+    subprocess.run(["systemctl", "--user", "enable", "--now",
+                    "leetforge-remind.timer"], check=True)
+    print(f"已注册每日提醒，每天 {_remind_times_str()} 推送通知。")
+
+
+def _unload_remind_linux(quiet: bool = False):
+    subprocess.run(["systemctl", "--user", "disable", "--now",
+                    "leetforge-remind.timer"], capture_output=True)
+    for f in (_REMIND_SERVICE_FILE, _REMIND_TIMER_FILE):
+        if f.exists():
+            f.unlink()
+    subprocess.run(["systemctl", "--user", "daemon-reload"], capture_output=True)
+    if not quiet:
+        print("已卸载每日提醒。")
+
+
+def _status_remind_linux():
+    result = subprocess.run(
+        ["systemctl", "--user", "is-active", "leetforge-remind.timer"],
+        capture_output=True, text=True)
+    if result.stdout.strip() == "active":
+        print(f"状态：已注册")
+        print(f"提醒时间：每天 {_remind_times_str()}")
+    else:
+        print("状态：未注册")
+        print("启用：leetcode --remind-daemon")
+    print(f"日志：{REMIND_LOG_FILE}")
+
+
+# --- Windows ---
+
+def _install_remind_windows():
+    lc_bin = _find_leetcode_bin()
+    for h, m in REMIND_HOURS:
+        task_name = f"{_REMIND_TASK_PREFIX}-{h:02d}{m:02d}"
+        subprocess.run([
+            "schtasks", "/create", "/tn", task_name,
+            "/tr", f'cmd /c "{lc_bin} --remind"',
+            "/sc", "daily", "/st", f"{h:02d}:{m:02d}", "/f",
+        ], check=True)
+    print(f"已注册每日提醒，每天 {_remind_times_str()} 推送通知。")
+
+
+def _unload_remind_windows(quiet: bool = False):
+    for h, m in REMIND_HOURS:
+        task_name = f"{_REMIND_TASK_PREFIX}-{h:02d}{m:02d}"
+        subprocess.run(["schtasks", "/delete", "/tn", task_name, "/f"],
+                       capture_output=True)
+    if not quiet:
+        print("已卸载每日提醒。")
+
+
+def _status_remind_windows():
+    found = False
+    for h, m in REMIND_HOURS:
+        task_name = f"{_REMIND_TASK_PREFIX}-{h:02d}{m:02d}"
+        result = subprocess.run(["schtasks", "/query", "/tn", task_name],
+                                capture_output=True)
+        if result.returncode == 0:
+            found = True
+    if found:
+        print(f"状态：已注册")
+        print(f"提醒时间：每天 {_remind_times_str()}")
+    else:
+        print("状态：未注册")
+        print("启用：leetcode --remind-daemon")
+    print(f"日志：{REMIND_LOG_FILE}")
+
+
+# --- 跨平台入口 ---
+
+def install_remind_daemon():
+    """注册每日提醒定时任务（10:00/17:00/22:00）。"""
+    system = platform.system()
+    if system == "Darwin":
+        _install_remind_macos()
+    elif system == "Linux":
+        _install_remind_linux()
+    elif system == "Windows":
+        _install_remind_windows()
+    else:
+        print(f"不支持的系统：{system}")
+        sys.exit(1)
+    print("\n关闭终端后仍会按时推送提醒。")
+    print("卸载：leetcode --remind-daemon stop")
+    print("查看：leetcode --remind-daemon status")
+
+
+def uninstall_remind_daemon():
+    """卸载每日提醒定时任务。"""
+    system = platform.system()
+    if system == "Darwin":
+        _unload_remind_macos()
+    elif system == "Linux":
+        _unload_remind_linux()
+    elif system == "Windows":
+        _unload_remind_windows()
+
+
+def remind_daemon_status():
+    """查看每日提醒任务状态。"""
+    system = platform.system()
+    print(f"系统：{system}\n")
+    if system == "Darwin":
+        _status_remind_macos()
+    elif system == "Linux":
+        _status_remind_linux()
+    elif system == "Windows":
+        _status_remind_windows()
     else:
         print(f"不支持的系统：{system}")
