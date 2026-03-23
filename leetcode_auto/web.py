@@ -308,6 +308,24 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .resume-empty .icon { font-size:40px; margin-bottom:12px; }
 @media (max-width:768px) { .resume-layout { grid-template-columns:1fr; height:auto; } }
 
+/* Interview */
+.interview-layout { display:grid; grid-template-columns:1fr 1fr; gap:16px; height:calc(100vh - 120px); }
+.interview-left { overflow-y:auto; }
+.interview-questions { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:16px; line-height:1.7; font-size:14px; }
+.interview-questions h2 { color:var(--accent); font-size:15px; margin:14px 0 6px; }
+.interview-questions h2:first-child { margin-top:0; }
+.interview-questions ol,.interview-questions ul { margin-left:18px; }
+.interview-questions li { margin:4px 0; }
+.interview-questions strong { color:var(--text); }
+.interview-right { display:flex; flex-direction:column; }
+.interview-chat { flex:1; display:flex; flex-direction:column; background:var(--card); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.interview-chat-header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:14px; font-weight:600; }
+.interview-chat-messages { flex:1; overflow-y:auto; padding:12px 16px; }
+.interview-status { font-size:12px; padding:3px 10px; border-radius:12px; }
+.status-active { background:rgba(63,185,80,0.15); color:var(--green); }
+.status-idle { background:rgba(139,148,158,0.15); color:var(--dim); }
+@media (max-width:768px) { .interview-layout { grid-template-columns:1fr; height:auto; } }
+
 /* Chat */
 .chat-container { display:flex; flex-direction:column; height:calc(100vh - 120px); }
 .chat-messages { flex:1; overflow-y:auto; padding:8px 0; }
@@ -384,6 +402,9 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   <div class="nav-sep"></div>
   <div class="nav-item" data-tab="resume">
     <span class="nav-icon">&#128196;</span><span>简历优化</span>
+  </div>
+  <div class="nav-item" data-tab="interview">
+    <span class="nav-icon">&#127908;</span><span>模拟面试</span>
   </div>
   <div class="sidebar-footer">
     <div class="sidebar-info">数据更新：__TODAY__</div>
@@ -488,6 +509,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
       <div class="resume-actions">
         <a href="/api/resume/template" download="resume_template.tex">下载 LaTeX 模板</a>
         <button class="primary" id="resume-analyze-btn">AI 分析</button>
+        <button id="resume-gen-interview-btn">生成面试题</button>
         <button id="resume-save-btn">保存</button>
       </div>
       <textarea class="resume-textarea" id="resume-input" placeholder="在此粘贴简历内容...&#10;&#10;支持纯文本或 LaTeX 格式。&#10;可先下载左上方的 LaTeX 模板，填入你的信息后粘贴到此处。"></textarea>
@@ -505,6 +527,36 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
           <input type="text" id="resume-chat-input" placeholder="向 AI 提问改进建议..." autocomplete="off">
           <button id="resume-chat-send">发送</button>
           <button id="resume-chat-clear" style="background:var(--border);">清空</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 模拟面试 ==================== -->
+<div class="tab-content" id="tab-interview">
+  <div class="page-title"><span class="icon">&#127908;</span> 模拟面试</div>
+  <div class="interview-layout">
+    <div class="interview-left">
+      <div class="interview-questions" id="interview-questions">
+        <div class="resume-empty">
+          <div class="icon">&#127908;</div>
+          <p>在「简历优化」页面粘贴简历后，点击「生成面试题」</p>
+        </div>
+      </div>
+    </div>
+    <div class="interview-right">
+      <div class="interview-chat">
+        <div class="interview-chat-header">
+          <span>AI 面试官</span>
+          <span class="interview-status status-idle" id="interview-status">未开始</span>
+        </div>
+        <div class="interview-chat-messages" id="interview-chat-messages"></div>
+        <div class="chat-input-row" style="padding:12px;">
+          <button id="interview-start-btn" class="primary" style="padding:10px 16px;">开始面试</button>
+          <input type="text" id="interview-chat-input" placeholder="输入你的回答..." autocomplete="off" disabled>
+          <button id="interview-chat-send" disabled>发送</button>
+          <button id="interview-chat-clear" style="background:var(--border);">重置</button>
         </div>
       </div>
     </div>
@@ -968,6 +1020,138 @@ function mdToHtml(md){
   });
 })();
 
+// ====== Interview ======
+(function(){
+  var questionsDiv=document.getElementById('interview-questions');
+  var chatMsgs=document.getElementById('interview-chat-messages');
+  var chatInput=document.getElementById('interview-chat-input');
+  var chatSend=document.getElementById('interview-chat-send');
+  var chatClear=document.getElementById('interview-chat-clear');
+  var startBtn=document.getElementById('interview-start-btn');
+  var statusEl=document.getElementById('interview-status');
+  var genBtn=document.getElementById('resume-gen-interview-btn');
+  var interviewHistory=[];
+  var interviewActive=false;
+
+  // Load saved questions & chat
+  fetch('/api/interview').then(r=>r.json()).then(function(d){
+    if(d.questions) questionsDiv.innerHTML=mdToHtml(d.questions);
+    if(d.chat_history&&d.chat_history.length>0){
+      interviewHistory=d.chat_history;
+      interviewHistory.forEach(function(m){appendInterviewMsg(m.role,m.content);});
+      setActive(true);
+    }
+  }).catch(function(){});
+
+  function appendInterviewMsg(role,text){
+    var div=document.createElement('div');
+    div.className='chat-msg '+(role==='user'?'user':'assistant');
+    var bubble=document.createElement('div');
+    bubble.className='chat-bubble';
+    bubble.innerHTML=role==='user'?text.replace(/&/g,'&amp;').replace(/</g,'&lt;'):mdToHtml(text);
+    div.appendChild(bubble);
+    chatMsgs.appendChild(div);
+    chatMsgs.scrollTop=chatMsgs.scrollHeight;
+  }
+
+  function setActive(on){
+    interviewActive=on;
+    chatInput.disabled=!on;
+    chatSend.disabled=!on;
+    if(on){
+      statusEl.textContent='进行中';
+      statusEl.className='interview-status status-active';
+      startBtn.style.display='none';
+    } else {
+      statusEl.textContent='未开始';
+      statusEl.className='interview-status status-idle';
+      startBtn.style.display='';
+    }
+  }
+
+  // Generate questions button (on Resume page)
+  genBtn.addEventListener('click',function(){
+    var content=document.getElementById('resume-input').value.trim();
+    if(!content){alert('请先在简历优化页面粘贴简历内容');return;}
+    genBtn.disabled=true;
+    genBtn.textContent='生成中...';
+    fetch('/api/interview',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'generate',content:content})
+    }).then(r=>r.json()).then(function(d){
+      genBtn.disabled=false;genBtn.textContent='生成面试题';
+      if(d.questions){
+        questionsDiv.innerHTML=mdToHtml(d.questions);
+        // Switch to interview tab
+        document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+        document.querySelector('[data-tab="interview"]').classList.add('active');
+        document.getElementById('tab-interview').classList.add('active');
+      } else {
+        alert(d.error||'生成失败');
+      }
+    }).catch(function(){genBtn.disabled=false;genBtn.textContent='生成面试题';});
+  });
+
+  // Start mock interview
+  startBtn.addEventListener('click',function(){
+    var resumeContent=document.getElementById('resume-input').value.trim();
+    if(!resumeContent){alert('请先在简历优化页面粘贴简历内容');return;}
+    startBtn.disabled=true;
+    startBtn.textContent='启动中...';
+    fetch('/api/interview',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'start'})
+    }).then(r=>r.json()).then(function(d){
+      startBtn.disabled=false;startBtn.textContent='开始面试';
+      if(d.reply){
+        interviewHistory=[];
+        chatMsgs.innerHTML='';
+        appendInterviewMsg('assistant',d.reply);
+        interviewHistory.push({role:'assistant',content:d.reply});
+        setActive(true);
+      }
+    }).catch(function(){startBtn.disabled=false;startBtn.textContent='开始面试';});
+  });
+
+  // Send answer
+  function sendAnswer(){
+    var text=chatInput.value.trim();
+    if(!text||!interviewActive) return;
+    chatInput.value='';
+    appendInterviewMsg('user',text);
+    chatSend.disabled=true;
+    var typing=document.createElement('div');
+    typing.className='chat-msg assistant';
+    typing.innerHTML='<div class="chat-bubble chat-typing">思考中...</div>';
+    chatMsgs.appendChild(typing);
+    chatMsgs.scrollTop=chatMsgs.scrollHeight;
+    fetch('/api/interview',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'chat',message:text,history:interviewHistory})
+    }).then(r=>r.json()).then(function(d){
+      chatMsgs.removeChild(typing);
+      chatSend.disabled=false;
+      if(d.reply){
+        appendInterviewMsg('assistant',d.reply);
+        interviewHistory.push({role:'user',content:text});
+        interviewHistory.push({role:'assistant',content:d.reply});
+      } else {
+        appendInterviewMsg('assistant',d.error||'请求失败');
+      }
+    }).catch(function(){chatMsgs.removeChild(typing);chatSend.disabled=false;});
+  }
+  chatSend.addEventListener('click',sendAnswer);
+  chatInput.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAnswer();}});
+
+  // Reset
+  chatClear.addEventListener('click',function(){
+    if(!confirm('确定重置模拟面试？')) return;
+    fetch('/api/interview',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'clear'})
+    }).then(function(){
+      interviewHistory=[];chatMsgs.innerHTML='';setActive(false);
+    });
+  });
+})();
+
 // ====== AI Chat ======
 (function(){
   var messages=document.getElementById('chat-messages');
@@ -1162,6 +1346,18 @@ def serve_web(
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
+            elif self.path == "/api/interview":
+                from .resume import load_interview_questions, load_interview_chat
+                result = {
+                    "questions": load_interview_questions(),
+                    "chat_history": load_interview_chat(),
+                }
+                body = json.dumps(result, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
             elif self.path == "/api/data":
                 fresh = _reload_data()
                 body = json.dumps(fresh, ensure_ascii=False).encode("utf-8")
@@ -1227,6 +1423,58 @@ def serve_web(
                     result = {"ok": True}
                 else:
                     result = {"error": "unknown action"}
+                body = json.dumps(result, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            elif self.path == "/api/interview":
+                length = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(length)
+                try:
+                    req = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    req = {}
+                action = req.get("action", "")
+                from .resume import (
+                    load_resume, generate_interview_questions,
+                    chat_interview, save_interview_chat, clear_interview_chat,
+                )
+                if action == "generate":
+                    content = req.get("content", "")
+                    from .resume import save_resume as _sr
+                    _sr(content)
+                    questions = generate_interview_questions(content)
+                    result = {"questions": questions} if questions else {"error": "AI 未配置或请求失败"}
+                elif action == "start":
+                    resume_content = load_resume()
+                    if not resume_content:
+                        result = {"error": "请先粘贴简历内容"}
+                    else:
+                        reply = chat_interview("请开始面试", [], resume_content)
+                        if reply:
+                            save_interview_chat([{"role": "assistant", "content": reply}])
+                            result = {"reply": reply}
+                        else:
+                            result = {"error": "AI 未配置或请求失败"}
+                elif action == "chat":
+                    msg = req.get("message", "")
+                    history = req.get("history", [])
+                    resume_content = load_resume()
+                    reply = chat_interview(msg, history, resume_content)
+                    if reply:
+                        history.append({"role": "user", "content": msg})
+                        history.append({"role": "assistant", "content": reply})
+                        save_interview_chat(history)
+                        result = {"reply": reply}
+                    else:
+                        result = {"error": "AI 未配置或请求失败"}
+                elif action == "clear":
+                    clear_interview_chat()
+                    result = {"ok": True}
+                else:
+                    result = {"error": "未知操作"}
                 body = json.dumps(result, ensure_ascii=False).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")

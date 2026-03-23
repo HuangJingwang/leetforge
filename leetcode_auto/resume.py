@@ -252,3 +252,113 @@ def chat_resume(user_message: str, history: list,
     messages = list(history)
     messages.append({"role": "user", "content": user_message})
     return call_ai_messages(messages, ai_config, system=system)
+
+
+# ---------------------------------------------------------------------------
+# 面试题生成 & 模拟面试
+# ---------------------------------------------------------------------------
+
+INTERVIEW_FILE = DATA_DIR / "interview_questions.json"
+INTERVIEW_CHAT_FILE = DATA_DIR / "interview_chat_history.json"
+
+_INTERVIEW_GEN_SYSTEM = """你是一位资深技术面试官。请根据候选人的简历，生成一份有针对性的面试题清单。
+
+要求：
+1. 题目必须紧扣简历中的项目经历、技术栈和工作内容
+2. 按类别分组，每组 3-5 题
+3. 标注难度（基础 / 进阶 / 深挖）
+4. 包含以下类别：
+   - **项目深挖**：针对简历中每个项目的细节追问
+   - **技术原理**：考察简历中提到的核心技术的底层原理
+   - **系统设计**：基于简历经验出的设计题
+   - **算法编程**：与简历技术栈相关的算法题
+   - **行为面试**：团队协作、挑战、成长类问题
+
+请按以下 Markdown 格式输出：
+
+## 项目深挖
+1. **[基础]** 题目内容
+2. **[进阶]** 题目内容
+...
+
+## 技术原理
+...
+
+用中文回答。"""
+
+_MOCK_INTERVIEW_SYSTEM = """你是一位严格但友善的技术面试官，正在面试候选人。
+
+候选人的简历：
+---
+{resume}
+---
+
+面试规则：
+1. 每次只问一个问题，等候选人回答后再继续
+2. 根据候选人的回答进行追问，不断深挖
+3. 如果回答不够好，给出提示引导，不要直接给答案
+4. 如果回答得好，给予肯定并过渡到下一个问题
+5. 结合简历中的项目和技术栈来提问
+6. 适当穿插基础原理、系统设计、行为面试等不同类型的问题
+7. 保持对话自然流畅，像真实面试一样
+
+现在开始面试。先简短自我介绍（一句话），然后提出第一个问题。"""
+
+
+def generate_interview_questions(resume_content: str) -> Optional[str]:
+    """根据简历生成面试题列表。"""
+    ai_config = get_ai_config()
+    if not ai_config["enabled"]:
+        return None
+
+    messages = [{"role": "user", "content": f"请根据以下简历生成面试题：\n\n{resume_content}"}]
+    result = call_ai_messages(messages, ai_config, system=_INTERVIEW_GEN_SYSTEM)
+    if result:
+        INTERVIEW_FILE.write_text(
+            json.dumps({"questions": result}, ensure_ascii=False, indent=2),
+            encoding="utf-8")
+    return result
+
+
+def load_interview_questions() -> str:
+    if INTERVIEW_FILE.exists():
+        try:
+            data = json.loads(INTERVIEW_FILE.read_text(encoding="utf-8"))
+            return data.get("questions", "")
+        except (json.JSONDecodeError, IOError):
+            pass
+    return ""
+
+
+def load_interview_chat() -> list:
+    if not INTERVIEW_CHAT_FILE.exists():
+        return []
+    try:
+        data = json.loads(INTERVIEW_CHAT_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, IOError):
+        return []
+
+
+def save_interview_chat(history: list):
+    trimmed = history[-60:]
+    INTERVIEW_CHAT_FILE.write_text(
+        json.dumps(trimmed, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def clear_interview_chat():
+    if INTERVIEW_CHAT_FILE.exists():
+        INTERVIEW_CHAT_FILE.unlink()
+
+
+def chat_interview(user_message: str, history: list,
+                   resume_content: str) -> Optional[str]:
+    """模拟面试对话。"""
+    ai_config = get_ai_config()
+    if not ai_config["enabled"]:
+        return None
+
+    system = _MOCK_INTERVIEW_SYSTEM.format(resume=resume_content[:4000])
+    messages = list(history)
+    messages.append({"role": "user", "content": user_message})
+    return call_ai_messages(messages, ai_config, system=system)
