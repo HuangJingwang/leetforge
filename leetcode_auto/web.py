@@ -433,11 +433,11 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   </div>
   <div class="today-grid">
     <div class="today-card">
-      <h2 data-i18n="today_new">今日新题 <span class="count count-accent" id="new-count"></span></h2>
+      <h2><span data-i18n="today_new">今日新题</span> <span class="count count-accent" id="new-count"></span></h2>
       <ul class="today-list" id="today-new"></ul>
     </div>
     <div class="today-card">
-      <h2 data-i18n="today_review">今日复习 <span class="count count-red" id="review-count-dash"></span></h2>
+      <h2><span data-i18n="today_review">今日复习</span> <span class="count count-red" id="review-count-dash"></span></h2>
       <ul class="today-list" id="today-review"></ul>
     </div>
   </div>
@@ -664,7 +664,8 @@ function applyLang(){
     var key=el.getAttribute('data-i18n');
     var val=t(key);
     if(el.tagName==='INPUT'||el.tagName==='TEXTAREA') el.placeholder=val;
-    else el.innerHTML=val;
+    else if(key==='chat_welcome'||key==='data_updated') el.innerHTML=val;
+    else el.textContent=val;
   });
   document.getElementById('lang-en').className='lang-btn'+(currentLang==='en'?' active':'');
   document.getElementById('lang-zh').className='lang-btn'+(currentLang==='zh'?' active':'');
