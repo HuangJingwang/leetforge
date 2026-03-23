@@ -72,23 +72,41 @@ def _build_comprehensive_data(
             "status": row.get("status", ""),
         })
 
-    # R1 未做的新题
-    new_todo = []
+    # R1 未做的新题 — 按分类分组，优先推荐薄弱分类，同一分类的题集中推荐
+    cat_stats = compute_category_stats(rows)
+    raw_todo = []
     for row in rows:
         if row["r1"] and row["r1"] not in ("", "—"):
             continue
         title_match = re.search(r"\[(.+?)\]", row["title"])
         display_title = title_match.group(1) if title_match else row["title"]
         cat = SLUG_CATEGORY.get(row.get("title_slug", ""), "其他")
-        new_todo.append({
+        raw_todo.append({
             "title": display_title,
             "slug": row.get("title_slug", ""),
             "difficulty": row["difficulty"],
             "category": cat,
         })
 
+    # 按分类完成率排序（低完成率优先），同分类内按简单→困难
     diff_order = {"简单": 0, "中等": 1, "困难": 2}
-    new_todo.sort(key=lambda x: diff_order.get(x["difficulty"], 1))
+    def _cat_priority(cat_name):
+        cs = cat_stats.get(cat_name, {})
+        total = cs.get("total", 1)
+        done = cs.get("done_r1", 0)
+        return done / max(total, 1)  # 完成率越低越优先
+
+    # 先按分类分组（薄弱分类排前面），组内按简单→困难
+    from collections import OrderedDict
+    sorted_cats = sorted(set(t["category"] for t in raw_todo), key=_cat_priority)
+    cat_groups = OrderedDict((c, []) for c in sorted_cats)
+    for t in raw_todo:
+        cat_groups[t["category"]].append(t)
+    for items in cat_groups.values():
+        items.sort(key=lambda x: diff_order.get(x["difficulty"], 1))
+    new_todo = []
+    for items in cat_groups.values():
+        new_todo.extend(items)
 
     # 构建打卡记录
     checkins = []
@@ -1676,7 +1694,7 @@ if(location.hash){var ht=location.hash.slice(1);if(document.getElementById('tab-
 
 def _reload_data() -> dict:
     """从文件重新读取所有数据，供 /api/data 实时返回最新状态。"""
-    from .sync import (
+    from .progress import (
         parse_progress_table, _compute_stats, _compute_streak,
         _get_review_due, _estimate_completion, _load_optimizations,
     )

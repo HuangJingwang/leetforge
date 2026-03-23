@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 [project.scripts]
-leetcode = "leetcode_auto.sync:main"
+leetcode = "leetcode_auto.cli:main"
