@@ -1,10 +1,10 @@
 <div align="center">
 
-# LeetForge
+# OfferPilot
 
-**刷题如锻造，每遍皆淬炼。**
+**你的 AI 求职导航员。**
 
-你的 LeetCode Hot100 刷题锻造台 —— 自动同步、智能复习、AI 代码分析、交互式 Web 看板，一站搞定。
+刷题同步、智能复习、AI 代码分析、简历优化、模拟面试 —— 从刷题到拿 Offer，全流程智能驾驶。
 
 [![Python](https://img.shields.io/badge/Python-3.9+-3776ab?logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -14,11 +14,11 @@
 
 ---
 
-## Why LeetForge?
+## Why OfferPilot?
 
 刷 Hot100 最痛的不是做题，而是 **记不住做了什么、不知道该复习什么、看不到进度、不知道代码能不能更优**。
 
-LeetForge 帮你解决这些问题：
+OfferPilot 帮你解决这些问题：
 
 - **自动同步** — 每天自动拉取 LeetCode CN AC 记录，零手动输入
 - **间隔复习** — 基于艾宾浩斯遗忘曲线，精准推送今日待复习题目
@@ -30,7 +30,7 @@ LeetForge 帮你解决这些问题：
 
 ```bash
 # 克隆 & 安装
-git clone https://github.com/HuangJingwang/leetforge.git
+git clone https://github.com/HuangJingwang/offerpilot.git
 cd leetcode_auto
 pip install -e .
 
@@ -184,7 +184,7 @@ leetcode --status
 
 ```
                                  ┌──────────────┐
-┌───────────┐   submissionList   │  LeetForge   │     ┌──────────────────────┐
+┌───────────┐   submissionList   │  OfferPilot   │     ┌──────────────────────┐
 │ LeetCode  │ ◄───────────────── │              │     │ ~/.leetcode_auto/    │
 │    CN     │  GraphQL API       │  ┌─ sync ──┐ │────►│  data/进度表.md       │
 └───────────┘                    │  │ match   │ │     │  data/打卡.md         │
@@ -221,7 +221,7 @@ leetcode --status
 ### 一键安装（推荐）
 
 ```bash
-git clone https://github.com/HuangJingwang/leetforge.git
+git clone https://github.com/HuangJingwang/offerpilot.git
 cd leetcode_auto
 ./install.sh
 ```
@@ -231,7 +231,7 @@ cd leetcode_auto
 ### 手动安装
 
 ```bash
-git clone https://github.com/HuangJingwang/leetforge.git
+git clone https://github.com/HuangJingwang/offerpilot.git
 cd leetcode_auto
 pip install -e .
 ```
@@ -337,7 +337,7 @@ leetcode_auto/
 <details>
 <summary><b>什么是"卡点题目"？</b></summary>
 
-同一道题当天提交 ≥ 3 次才 AC，说明这道题有难度。LeetForge 自动检测并写入打卡记录，方便后续重点复习。
+同一道题当天提交 ≥ 3 次才 AC，说明这道题有难度。OfferPilot 自动检测并写入打卡记录，方便后续重点复习。
 </details>
 
 <details>
@@ -376,4 +376,4 @@ macOS / Linux / Windows 均可使用。桌面通知分别适配了 osascript / n
 
 ## License
 
-[MIT](LICENSE) &copy; 2025 LeetForge
+[MIT](LICENSE) &copy; 2025 OfferPilot

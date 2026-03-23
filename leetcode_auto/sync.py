@@ -802,7 +802,7 @@ def send_notification(title: str, message: str):
             if shutil.which("terminal-notifier"):
                 cmd = ["terminal-notifier",
                        "-title", title, "-message", message,
-                       "-group", "leetforge"]
+                       "-group", "offerpilot"]
                 subprocess.run(cmd, capture_output=True, timeout=5)
             else:
                 # osascript: 用 subtitle 在 banner 中展示更多信息
@@ -1123,7 +1123,7 @@ def cmd_chat():
         print("  AI_API_KEY=sk-xxx")
         sys.exit(1)
 
-    print(f"=== LeetForge AI 助手（{ai_config['model']}）===")
+    print(f"=== OfferPilot AI 助手（{ai_config['model']}）===")
     print("输入问题即可对话，输入 q 退出，输入 clear 清空历史\n")
 
     system_prompt = build_chat_context()
@@ -1304,7 +1304,7 @@ def main():
     elif args.cron:
         cron_loop(args.cron)
     else:
-        is_background = os.environ.get("LEETFORGE_DAEMON") == "1"
+        is_background = os.environ.get("OFFERPILOT_DAEMON") == "1"
         sync(interactive=not is_background)
 
 

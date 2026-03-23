@@ -3,9 +3,9 @@ requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "leetforge"
-version = "1.0.0"
-description = "LeetForge — 你的 LeetCode Hot100 刷题锻造台。自动同步、智能复习、炫彩看板，一站搞定。"
+name = "offerpilot"
+version = "2.0.0"
+description = "OfferPilot — 你的 AI 求职导航员。刷题同步、智能复习、代码优化、简历分析、模拟面试，一站搞定。"
 requires-python = ">=3.9"
 dependencies = [
     "requests",

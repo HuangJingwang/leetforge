@@ -95,7 +95,7 @@ LATEX_TEMPLATE = r"""%!TEX program = xelatex
 \end{itemize}
 
 \vspace{4pt}
-\entry{LeetForge — LeetCode 刷题锻造台}{开源项目 · Python}{ECharts / GraphQL / AI}{2025.01 -- 至今}
+\entry{OfferPilot — LeetCode 刷题锻造台}{开源项目 · Python}{ECharts / GraphQL / AI}{2025.01 -- 至今}
 \begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
   \item 自动同步 LeetCode 刷题记录，基于间隔重复算法推送复习计划
   \item 接入 AI 对比官方题解，自动分析代码复杂度并给出优化建议

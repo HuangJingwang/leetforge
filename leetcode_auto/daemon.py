@@ -22,8 +22,8 @@ from typing import Optional
 
 from .config import DATA_DIR
 
-SERVICE_ID = "com.leetforge.sync"
-REMIND_SERVICE_ID = "com.leetforge.remind"
+SERVICE_ID = "com.offerpilot.sync"
+REMIND_SERVICE_ID = "com.offerpilot.remind"
 LOG_FILE = DATA_DIR / "sync.log"
 REMIND_LOG_FILE = DATA_DIR / "remind.log"
 SCHEDULE_FILE = DATA_DIR / "daemon_schedule.json"
@@ -183,7 +183,7 @@ def _plist_content(sched: Schedule) -> str:
     <dict>
         <key>PATH</key>
         <string>{path_env}</string>
-        <key>LEETFORGE_DAEMON</key>
+        <key>OFFERPILOT_DAEMON</key>
         <string>1</string>
     </dict>
 </dict>
@@ -238,8 +238,8 @@ def _status_macos():
 # ---------------------------------------------------------------------------
 
 _SYSTEMD_DIR = Path.home() / ".config" / "systemd" / "user"
-_SERVICE_FILE = _SYSTEMD_DIR / "leetforge-sync.service"
-_TIMER_FILE = _SYSTEMD_DIR / "leetforge-sync.timer"
+_SERVICE_FILE = _SYSTEMD_DIR / "offerpilot-sync.service"
+_TIMER_FILE = _SYSTEMD_DIR / "offerpilot-sync.timer"
 
 
 def _systemd_on_calendar(sched: Schedule) -> str:
@@ -258,7 +258,7 @@ def _install_linux(sched: Schedule):
 
     _SERVICE_FILE.write_text(
         f"[Unit]\n"
-        f"Description=LeetForge sync\n"
+        f"Description=OfferPilot sync\n"
         f"\n"
         f"[Service]\n"
         f"Type=oneshot\n"
@@ -266,12 +266,12 @@ def _install_linux(sched: Schedule):
         f"StandardOutput=append:{LOG_FILE}\n"
         f"StandardError=append:{LOG_FILE}\n"
         f"Environment=PATH={os.environ.get('PATH', '/usr/local/bin:/usr/bin:/bin')}\n"
-        f"Environment=LEETFORGE_DAEMON=1\n",
+        f"Environment=OFFERPILOT_DAEMON=1\n",
         encoding="utf-8",
     )
     _TIMER_FILE.write_text(
         f"[Unit]\n"
-        f"Description=LeetForge sync timer\n"
+        f"Description=OfferPilot sync timer\n"
         f"\n"
         f"[Timer]\n"
         f"OnCalendar={_systemd_on_calendar(sched)}\n"
@@ -283,15 +283,15 @@ def _install_linux(sched: Schedule):
     )
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
     subprocess.run(["systemctl", "--user", "enable", "--now",
-                    "leetforge-sync.timer"], check=True)
+                    "offerpilot-sync.timer"], check=True)
     print(f"已注册 systemd 定时器，{sched.human_str()}自动同步。")
     print(f"日志文件：{LOG_FILE}")
-    print(f"查看状态：systemctl --user status leetforge-sync.timer")
+    print(f"查看状态：systemctl --user status offerpilot-sync.timer")
 
 
 def _unload_linux(quiet: bool = False):
     subprocess.run(["systemctl", "--user", "disable", "--now",
-                    "leetforge-sync.timer"], capture_output=True)
+                    "offerpilot-sync.timer"], capture_output=True)
     for f in (_SERVICE_FILE, _TIMER_FILE):
         if f.exists():
             f.unlink()
@@ -302,7 +302,7 @@ def _unload_linux(quiet: bool = False):
 
 def _status_linux():
     result = subprocess.run(
-        ["systemctl", "--user", "is-active", "leetforge-sync.timer"],
+        ["systemctl", "--user", "is-active", "offerpilot-sync.timer"],
         capture_output=True, text=True,
     )
     active = result.stdout.strip() == "active"
@@ -312,7 +312,7 @@ def _status_linux():
         if sched:
             print(f"频率：{sched.human_str()}")
         info = subprocess.run(
-            ["systemctl", "--user", "status", "leetforge-sync.timer"],
+            ["systemctl", "--user", "status", "offerpilot-sync.timer"],
             capture_output=True, text=True,
         )
         for line in info.stdout.splitlines():
@@ -329,12 +329,12 @@ def _status_linux():
 # Windows: schtasks
 # ---------------------------------------------------------------------------
 
-_TASK_NAME = "LeetForge-Sync"
+_TASK_NAME = "OfferPilot-Sync"
 
 
 def _install_windows(sched: Schedule):
     lc_bin = _find_leetcode_bin()
-    wrapped = f'cmd /c "set LEETFORGE_DAEMON=1 && {lc_bin}"'
+    wrapped = f'cmd /c "set OFFERPILOT_DAEMON=1 && {lc_bin}"'
 
     if sched.mode == "interval":
         mins = sched.interval_seconds // 60
@@ -467,9 +467,9 @@ def daemon_status():
 # ---------------------------------------------------------------------------
 
 _REMIND_PLIST_FILE = _PLIST_DIR / f"{REMIND_SERVICE_ID}.plist"
-_REMIND_SERVICE_FILE = _SYSTEMD_DIR / "leetforge-remind.service"
-_REMIND_TIMER_FILE = _SYSTEMD_DIR / "leetforge-remind.timer"
-_REMIND_TASK_PREFIX = "LeetForge-Remind"
+_REMIND_SERVICE_FILE = _SYSTEMD_DIR / "offerpilot-remind.service"
+_REMIND_TIMER_FILE = _SYSTEMD_DIR / "offerpilot-remind.timer"
+_REMIND_TASK_PREFIX = "OfferPilot-Remind"
 
 
 def _remind_times_str() -> str:
@@ -564,7 +564,7 @@ def _install_remind_linux():
     lc_bin = _find_leetcode_bin()
     _SYSTEMD_DIR.mkdir(parents=True, exist_ok=True)
     _REMIND_SERVICE_FILE.write_text(
-        f"[Unit]\nDescription=LeetForge reminder\n\n"
+        f"[Unit]\nDescription=OfferPilot reminder\n\n"
         f"[Service]\nType=oneshot\n"
         f"ExecStart={lc_bin} --remind\n"
         f"StandardOutput=append:{REMIND_LOG_FILE}\n"
@@ -575,20 +575,20 @@ def _install_remind_linux():
     on_calendars = "\n".join(
         f"OnCalendar=*-*-* {h:02d}:{m:02d}:00" for h, m in REMIND_HOURS)
     _REMIND_TIMER_FILE.write_text(
-        f"[Unit]\nDescription=LeetForge reminder timer\n\n"
+        f"[Unit]\nDescription=OfferPilot reminder timer\n\n"
         f"[Timer]\n{on_calendars}\nPersistent=true\n\n"
         f"[Install]\nWantedBy=timers.target\n",
         encoding="utf-8",
     )
     subprocess.run(["systemctl", "--user", "daemon-reload"], check=True)
     subprocess.run(["systemctl", "--user", "enable", "--now",
-                    "leetforge-remind.timer"], check=True)
+                    "offerpilot-remind.timer"], check=True)
     print(f"已注册每日提醒，每天 {_remind_times_str()} 推送通知。")
 
 
 def _unload_remind_linux(quiet: bool = False):
     subprocess.run(["systemctl", "--user", "disable", "--now",
-                    "leetforge-remind.timer"], capture_output=True)
+                    "offerpilot-remind.timer"], capture_output=True)
     for f in (_REMIND_SERVICE_FILE, _REMIND_TIMER_FILE):
         if f.exists():
             f.unlink()
@@ -599,7 +599,7 @@ def _unload_remind_linux(quiet: bool = False):
 
 def _status_remind_linux():
     result = subprocess.run(
-        ["systemctl", "--user", "is-active", "leetforge-remind.timer"],
+        ["systemctl", "--user", "is-active", "offerpilot-remind.timer"],
         capture_output=True, text=True)
     if result.stdout.strip() == "active":
         print(f"状态：已注册")

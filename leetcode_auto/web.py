@@ -382,7 +382,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 <body>
 
 <nav class="sidebar">
-  <h1><span>LeetForge</span></h1>
+  <h1><span>OfferPilot</span></h1>
   <div class="nav-item active" data-tab="dashboard">
     <span class="nav-icon">&#128200;</span><span data-i18n="nav_dashboard">总览</span>
   </div>
@@ -575,7 +575,7 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   <div class="page-title"><span class="icon">&#128172;</span> <span data-i18n="nav_chat">AI 对话</span></div>
   <div class="chat-container">
     <div class="chat-messages" id="chat-messages">
-      <div class="chat-msg assistant"><div class="chat-bubble" data-i18n="chat_welcome">你好！我是 LeetForge AI 助手，可以帮你：<br>- 查看刷题进度和统计<br>- 推荐今天该刷的题<br>- 分析薄弱环节<br>- 制定学习计划<br>- 解答算法问题<br><br>有什么想问的？</div></div>
+      <div class="chat-msg assistant"><div class="chat-bubble" data-i18n="chat_welcome">你好！我是 OfferPilot AI 助手，可以帮你：<br>- 查看刷题进度和统计<br>- 推荐今天该刷的题<br>- 分析薄弱环节<br>- 制定学习计划<br>- 解答算法问题<br><br>有什么想问的？</div></div>
     </div>
     <div class="chat-input-row">
       <input type="text" id="chat-input" placeholder="输入问题..." autocomplete="off" data-i18n="chat_ph">
@@ -615,7 +615,7 @@ var I18N={
     interview_start:'开始面试',interview_starting:'启动中...',interview_status_idle:'未开始',
     interview_status_active:'进行中',interview_ans_ph:'输入你的回答...',
     interview_gen_ing:'生成中...',interview_confirm_reset:'确定重置模拟面试？',
-    chat_welcome:'你好！我是 LeetForge AI 助手，可以帮你：<br>- 查看刷题进度和统计<br>- 推荐今天该刷的题<br>- 分析薄弱环节<br>- 制定学习计划<br>- 解答算法问题<br><br>有什么想问的？',
+    chat_welcome:'你好！我是 OfferPilot AI 助手，可以帮你：<br>- 查看刷题进度和统计<br>- 推荐今天该刷的题<br>- 分析薄弱环节<br>- 制定学习计划<br>- 解答算法问题<br><br>有什么想问的？',
     chat_ph:'输入问题...',btn_send:'发送',btn_clear:'清空',
     confirm_clear:'确定清空所有对话记录？',confirm_clear_resume:'确定清空简历对话记录？',
     chat_cleared:'对话已清空，有什么想问的？',thinking:''+t('thinking')+'',net_error:''+t('net_error')+'',
@@ -647,7 +647,7 @@ var I18N={
     interview_start:'Start Interview',interview_starting:'Starting...',interview_status_idle:'Not Started',
     interview_status_active:'In Progress',interview_ans_ph:'Type your answer...',
     interview_gen_ing:'Generating...',interview_confirm_reset:'Reset mock interview?',
-    chat_welcome:'Hi! I\'m the LeetForge AI assistant. I can help you:<br>- Check study progress<br>- Recommend problems to solve<br>- Analyze weak areas<br>- Create study plans<br>- Answer algorithm questions<br><br>What would you like to know?',
+    chat_welcome:'Hi! I\'m the OfferPilot AI assistant. I can help you:<br>- Check study progress<br>- Recommend problems to solve<br>- Analyze weak areas<br>- Create study plans<br>- Answer algorithm questions<br><br>What would you like to know?',
     chat_ph:'Type a question...',btn_send:'Send',btn_clear:'Clear',
     confirm_clear:'Clear all chat history?',confirm_clear_resume:'Clear resume chat history?',
     chat_cleared:'Chat cleared. What would you like to ask?',thinking:'Thinking...',net_error:'Network error',
@@ -655,7 +655,7 @@ var I18N={
     data_updated:'Data: __TODAY__',
   }
 };
-var currentLang=localStorage.getItem('leetforge_lang')||'en';
+var currentLang=localStorage.getItem('offerpilot_lang')||'en';
 
 function t(key){return (I18N[currentLang]||I18N.en)[key]||(I18N.en[key]||key);}
 
@@ -672,7 +672,7 @@ function applyLang(){
 
 function switchLang(lang){
   currentLang=lang;
-  localStorage.setItem('leetforge_lang',lang);
+  localStorage.setItem('offerpilot_lang',lang);
   applyLang();
 }
 

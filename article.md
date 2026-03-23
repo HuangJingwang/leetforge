@@ -1,4 +1,4 @@
-# 【LeetForge】我写了一个 LeetCode 刷题自动追踪工具，从此告别手动打卡
+# 【OfferPilot】我写了一个 LeetCode 刷题自动追踪工具，从此告别手动打卡
 
 ## 前言
 
@@ -13,13 +13,13 @@
 
 搞了一个礼拜之后我发现，**维护进度表的时间比做题还长**。更要命的是，复习计划完全靠脑子记，今天该复习「两数之和」还是「三数之和」？忘了。
 
-作为一个程序员，这种事情肯定不能忍。于是我花了点时间搞了一个工具 —— **LeetForge**，自动从 LeetCode 拉取 AC 记录，自动更新进度表，自动计算复习计划，甚至还有炫彩终端面板和 Web 看板。
+作为一个程序员，这种事情肯定不能忍。于是我花了点时间搞了一个工具 —— **OfferPilot**，自动从 LeetCode 拉取 AC 记录，自动更新进度表，自动计算复习计划，甚至还有炫彩终端面板和 Web 看板。
 
 **PS：这整个项目，从第一行代码到最后的部署上线，我都是用 Cursor + Claude Opus 4.6 模型完成的。** 我负责提需求、定方向、做决策，Cursor 负责找方案、写代码、调 Bug。后面文章中凡是涉及到具体的技术选型和代码实现，基本都是我把需求丢给 Cursor，它帮我找到了具体方案并实现的。说实话，这种"我说你写"的开发体验比我想象的丝滑得多，三四个小时就把整个项目从零搭到了功能完备。这也是我想分享这个项目的原因之一 —— **与其花时间手动造轮子，不如把需求描述清楚，让 AI 帮你又快又好地实现。**
 
 本文会介绍这个工具的设计思路、核心实现、以及一些踩过的坑。
 
-> 项目地址：[github.com/HuangJingwang/leetforge](https://github.com/HuangJingwang/leetforge)
+> 项目地址：[github.com/HuangJingwang/offerpilot](https://github.com/HuangJingwang/offerpilot)
 
 ## 需求分析
 
@@ -267,7 +267,7 @@ SLUG_CATEGORY = {
 ## 项目结构
 
 ```
-leetforge/
+offerpilot/
 ├── install.sh              # 一键安装
 ├── pyproject.toml          # 包配置 + CLI 入口
 └── leetcode_auto/
@@ -318,8 +318,8 @@ subprocess.run(
 
 ```bash
 # 安装
-git clone https://github.com/HuangJingwang/leetforge.git
-cd leetforge && pip install -e .
+git clone https://github.com/HuangJingwang/offerpilot.git
+cd offerpilot && pip install -e .
 
 # 首次运行：弹浏览器登录 + 同步
 leetcode
@@ -376,4 +376,4 @@ leetcode --badge        # SVG 进度徽章
 
 如果你也在刷 Hot100，或者有类似的刷题追踪需求，欢迎试用和 Star。也欢迎在评论区聊聊你们用 AI 辅助开发的体验。
 
-> 项目地址：[github.com/HuangJingwang/leetforge](https://github.com/HuangJingwang/leetforge)
+> 项目地址：[github.com/HuangJingwang/offerpilot](https://github.com/HuangJingwang/offerpilot)
