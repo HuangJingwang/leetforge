@@ -1108,6 +1108,45 @@ def cmd_remind_daemon(arg: str):
         install_remind_daemon()
 
 
+def cmd_chat():
+    """交互式 AI 对话，询问刷题进度和建议。"""
+    from .config import get_ai_config
+    from .ai_analyzer import build_chat_context, chat
+
+    ai_config = get_ai_config()
+    if not ai_config["enabled"]:
+        print("错误：未配置 AI。请在 ~/.leetcode_auto/.env 中设置：")
+        print("  AI_PROVIDER=openai")
+        print("  AI_API_KEY=sk-xxx")
+        sys.exit(1)
+
+    print(f"=== LeetForge AI 助手（{ai_config['model']}）===")
+    print("输入问题即可对话，输入 q 退出\n")
+
+    system_prompt = build_chat_context()
+    history = []
+
+    while True:
+        try:
+            user_input = input("你: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\n再见！")
+            break
+        if not user_input:
+            continue
+        if user_input.lower() in ("q", "quit", "exit"):
+            print("再见！")
+            break
+
+        reply = chat(user_input, history, system_prompt)
+        if reply:
+            history.append({"role": "user", "content": user_input})
+            history.append({"role": "assistant", "content": reply})
+            print(f"\n助手: {reply}\n")
+        else:
+            print("\n助手: 抱歉，请求失败，请重试。\n")
+
+
 def cmd_optimize():
     """查看待优化题目列表。"""
     ensure_plan_files(PLAN_DIR, PROGRESS_FILE, CHECKIN_FILE, DASHBOARD_FILE)
@@ -1212,6 +1251,8 @@ def main():
                         help="生成每周报告")
     parser.add_argument("--optimize", action="store_true",
                         help="查看待优化题目列表")
+    parser.add_argument("--chat", action="store_true",
+                        help="AI 对话助手，询问进度和刷题建议")
     parser.add_argument("--daemon", nargs="?", const="status",
                         metavar="SCHEDULE",
                         help="后台定时任务：30m/1h/23:00/status/stop")
@@ -1240,6 +1281,8 @@ def main():
         cmd_report()
     elif args.optimize:
         cmd_optimize()
+    elif args.chat:
+        cmd_chat()
     elif args.remind:
         remind()
     elif args.daemon is not None:

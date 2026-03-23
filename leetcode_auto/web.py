@@ -270,6 +270,26 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .tag-new { background:rgba(88,166,255,0.12); color:var(--accent); }
 .tag-cat { background:rgba(139,148,158,0.12); color:var(--dim); }
 
+/* Chat */
+.chat-container { display:flex; flex-direction:column; height:calc(100vh - 120px); }
+.chat-messages { flex:1; overflow-y:auto; padding:8px 0; }
+.chat-msg { display:flex; margin-bottom:12px; }
+.chat-msg.user { justify-content:flex-end; }
+.chat-bubble { max-width:75%; padding:10px 14px; border-radius:12px; font-size:14px; line-height:1.6; white-space:pre-wrap; word-break:break-word; }
+.chat-msg.user .chat-bubble { background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+.chat-msg.assistant .chat-bubble { background:var(--card); border:1px solid var(--border); border-bottom-left-radius:4px; }
+.chat-msg.assistant .chat-bubble h3 { font-size:14px; color:var(--accent); margin:8px 0 4px; }
+.chat-msg.assistant .chat-bubble code { background:var(--bg); padding:1px 5px; border-radius:3px; font-size:12px; }
+.chat-msg.assistant .chat-bubble pre { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:8px; margin:6px 0; font-size:12px; overflow-x:auto; }
+.chat-msg.assistant .chat-bubble ul,.chat-msg.assistant .chat-bubble ol { margin-left:16px; }
+.chat-input-row { display:flex; gap:8px; padding-top:12px; border-top:1px solid var(--border); }
+.chat-input-row input { flex:1; background:var(--bg2); border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:8px; font-size:14px; outline:none; }
+.chat-input-row input:focus { border-color:var(--accent); }
+.chat-input-row button { background:var(--accent); color:#fff; border:none; padding:10px 20px; border-radius:8px; font-size:14px; cursor:pointer; }
+.chat-input-row button:hover { opacity:0.9; }
+.chat-input-row button:disabled { opacity:0.5; cursor:not-allowed; }
+.chat-typing { color:var(--dim); font-style:italic; font-size:13px; }
+
 /* Responsive */
 @media (max-width:768px) {
   .sidebar { display:none; }
@@ -301,6 +321,9 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
   </div>
   <div class="nav-item" data-tab="optimize" id="nav-optimize">
     <span>Optimize</span>
+  </div>
+  <div class="nav-item" data-tab="chat">
+    <span>AI Chat</span>
   </div>
 </nav>
 
@@ -391,6 +414,20 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 <div class="tab-content" id="tab-optimize">
   <div class="page-title"><span class="icon">&#9889;</span> Optimization <span class="table-count" id="opt-count"></span></div>
   <div id="optimize-list"></div>
+</div>
+
+<!-- ==================== AI Chat ==================== -->
+<div class="tab-content" id="tab-chat">
+  <div class="page-title"><span class="icon">&#128172;</span> AI Chat</div>
+  <div class="chat-container">
+    <div class="chat-messages" id="chat-messages">
+      <div class="chat-msg assistant"><div class="chat-bubble">你好！我是 LeetForge AI 助手，可以帮你：<br>- 查看刷题进度和统计<br>- 推荐今天该刷的题<br>- 分析薄弱环节<br>- 制定学习计划<br>- 解答算法问题<br><br>有什么想问的？</div></div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="输入问题..." autocomplete="off">
+      <button id="chat-send">发送</button>
+    </div>
+  </div>
 </div>
 
 </div><!-- /main -->
@@ -744,6 +781,68 @@ function mdToHtml(md){
   container.innerHTML=html;
 })();
 
+// ====== AI Chat ======
+(function(){
+  var messages=document.getElementById('chat-messages');
+  var input=document.getElementById('chat-input');
+  var btn=document.getElementById('chat-send');
+  var history=[];
+
+  function appendMsg(role,text){
+    var div=document.createElement('div');
+    div.className='chat-msg '+role;
+    var bubble=document.createElement('div');
+    bubble.className='chat-bubble';
+    if(role==='assistant'){
+      bubble.innerHTML=mdToHtml(text);
+    } else {
+      bubble.textContent=text;
+    }
+    div.appendChild(bubble);
+    messages.appendChild(div);
+    messages.scrollTop=messages.scrollHeight;
+  }
+
+  function send(){
+    var text=input.value.trim();
+    if(!text) return;
+    input.value='';
+    appendMsg('user',text);
+    btn.disabled=true;
+    // typing indicator
+    var typing=document.createElement('div');
+    typing.className='chat-msg assistant';
+    typing.innerHTML='<div class="chat-bubble chat-typing">thinking...</div>';
+    messages.appendChild(typing);
+    messages.scrollTop=messages.scrollHeight;
+
+    fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text,history:history})
+    }).then(r=>r.json()).then(function(data){
+      messages.removeChild(typing);
+      btn.disabled=false;
+      if(data.reply){
+        appendMsg('assistant',data.reply);
+        history.push({role:'user',content:text});
+        history.push({role:'assistant',content:data.reply});
+      } else {
+        appendMsg('assistant',data.error||'请求失败，请重试。');
+      }
+    }).catch(function(){
+      messages.removeChild(typing);
+      btn.disabled=false;
+      appendMsg('assistant','网络错误，请重试。');
+    });
+  }
+
+  btn.addEventListener('click',send);
+  input.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}
+  });
+})();
+
 // ====== Auto Refresh ======
 (function(){
   var fingerprint=D.done_rounds+'|'+D.done_problems+'|'+(D.review_due?D.review_due.length:0)+'|'+(D.optimizations?D.optimizations.length:0)+'|'+(D.new_todo?D.new_todo.length:0);
@@ -839,6 +938,41 @@ def serve_web(
                 self.send_header("Content-Length", str(len(html_bytes)))
                 self.end_headers()
                 self.wfile.write(html_bytes)
+
+        def do_POST(self):
+            if self.path == "/api/chat":
+                length = int(self.headers.get("Content-Length", 0))
+                raw = self.rfile.read(length)
+                try:
+                    req = json.loads(raw)
+                except (json.JSONDecodeError, ValueError):
+                    req = {}
+
+                msg = req.get("message", "")
+                history = req.get("history", [])
+
+                from .config import get_ai_config
+                ai_config = get_ai_config()
+                if not ai_config["enabled"]:
+                    result = {"error": "AI 未配置，请在 ~/.leetcode_auto/.env 中设置 AI_PROVIDER 和 AI_API_KEY"}
+                else:
+                    from .ai_analyzer import build_chat_context, chat as ai_chat
+                    system_prompt = build_chat_context()
+                    reply = ai_chat(msg, history, system_prompt)
+                    if reply:
+                        result = {"reply": reply}
+                    else:
+                        result = {"error": "AI 请求失败，请重试"}
+
+                body = json.dumps(result, ensure_ascii=False).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+            else:
+                self.send_response(404)
+                self.end_headers()
 
         def log_message(self, fmt, *args):
             pass

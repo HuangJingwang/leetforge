@@ -148,8 +148,10 @@ def _build_prompt(opt: dict, solution_info: dict) -> str:
     )
 
 
-def _call_claude(prompt: str, config: dict) -> Optional[str]:
-    """调用 Claude API。"""
+def _call_claude(
+    messages: list, config: dict, system: str = "",
+) -> Optional[str]:
+    """调用 Claude API。messages: [{"role":"user","content":"..."},...]"""
     base_url = config.get("base_url") or "https://api.anthropic.com/v1"
     url = f"{base_url.rstrip('/')}/messages"
     headers = {
@@ -160,8 +162,10 @@ def _call_claude(prompt: str, config: dict) -> Optional[str]:
     payload = {
         "model": config["model"],
         "max_tokens": 2000,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": messages,
     }
+    if system:
+        payload["system"] = system
     try:
         resp = requests.post(url, json=payload, headers=headers, timeout=60)
         resp.raise_for_status()
@@ -174,18 +178,23 @@ def _call_claude(prompt: str, config: dict) -> Optional[str]:
     return None
 
 
-def _call_openai(prompt: str, config: dict) -> Optional[str]:
-    """调用 OpenAI API。"""
+def _call_openai(
+    messages: list, config: dict, system: str = "",
+) -> Optional[str]:
+    """调用 OpenAI API。messages: [{"role":"user","content":"..."},...]"""
     base_url = config.get("base_url") or "https://api.openai.com/v1"
     url = f"{base_url.rstrip('/')}/chat/completions"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {config['api_key']}",
     }
+    all_messages = list(messages)
+    if system:
+        all_messages.insert(0, {"role": "system", "content": system})
     payload = {
         "model": config["model"],
         "max_tokens": 2000,
-        "messages": [{"role": "user", "content": prompt}],
+        "messages": all_messages,
     }
     try:
         resp = requests.post(url, json=payload, headers=headers, timeout=60)
@@ -200,12 +209,20 @@ def _call_openai(prompt: str, config: dict) -> Optional[str]:
 
 
 def call_ai(prompt: str, config: dict) -> Optional[str]:
-    """根据 provider 调用对应的 AI API。"""
+    """单轮调用（兼容旧接口）。"""
+    messages = [{"role": "user", "content": prompt}]
+    return call_ai_messages(messages, config)
+
+
+def call_ai_messages(
+    messages: list, config: dict, system: str = "",
+) -> Optional[str]:
+    """多轮调用，支持 system prompt 和历史消息。"""
     provider = config.get("provider", "")
     if provider == "claude":
-        return _call_claude(prompt, config)
+        return _call_claude(messages, config, system)
     elif provider == "openai":
-        return _call_openai(prompt, config)
+        return _call_openai(messages, config, system)
     return None
 
 
@@ -260,3 +277,129 @@ def batch_analyze(
         else:
             print(f"   {title} 分析失败")
     return optimizations
+
+
+# ---------------------------------------------------------------------------
+# 对话功能
+# ---------------------------------------------------------------------------
+
+_CHAT_SYSTEM_PROMPT = """你是 LeetForge 刷题助手，帮助用户了解刷题进度、制定学习计划、解答算法问题。
+
+以下是用户当前的刷题数据：
+
+## 总体进度
+- 题目总数：{total}
+- 已完成轮次：{done_rounds}/{total_rounds}（{rate:.1f}%）
+- 5 轮全通：{done_problems}/{total}
+- 连续打卡：{streak} 天
+- 累计打卡：{total_days} 天
+- 预估完成：{est}
+
+## 各轮进度
+- R1：{r1}/{total}
+- R2：{r2}/{total}
+- R3：{r3}/{total}
+- R4：{r4}/{total}
+- R5：{r5}/{total}
+
+## 分类掌握度（R1 完成率）
+{category_stats}
+
+## 今日待复习（{review_count} 题）
+{review_list}
+
+## R1 待刷新题（{new_count} 题）
+{new_list}
+
+## 待优化题目（{opt_count} 题）
+{opt_list}
+
+请根据以上数据回答用户的问题。回答要简洁、具体、有针对性。用中文回答。"""
+
+
+def build_chat_context() -> str:
+    """读取刷题数据，构建对话的 system prompt。"""
+    from .sync import (
+        parse_progress_table, _compute_stats, _compute_streak,
+        _get_review_due, _estimate_completion, _load_optimizations,
+    )
+    from .features import parse_checkin_data, compute_category_stats
+    from .config import PROGRESS_FILE, CHECKIN_FILE
+    from .init_plan import SLUG_CATEGORY, ensure_plan_files
+    from .config import PLAN_DIR, DASHBOARD_FILE
+    from datetime import date as _date
+
+    ensure_plan_files(PLAN_DIR, PROGRESS_FILE, CHECKIN_FILE, DASHBOARD_FILE)
+    _, rows = parse_progress_table(PROGRESS_FILE)
+    stats = _compute_stats(rows)
+    streak, total_days = _compute_streak(CHECKIN_FILE)
+    review_due = _get_review_due(rows, _date.today())
+    est = _estimate_completion(stats, total_days)
+    optimizations = _load_optimizations()
+
+    # 分类统计
+    cat_stats = compute_category_stats(rows)
+    cat_lines = []
+    for cat, cs in sorted(cat_stats.items(),
+                          key=lambda x: x[1]["done_r1"] / max(x[1]["total"], 1)):
+        pct = cs["done_r1"] / cs["total"] * 100 if cs["total"] else 0
+        cat_lines.append(f"- {cat}：{cs['done_r1']}/{cs['total']}（{pct:.0f}%）")
+
+    # 待复习
+    review_lines = []
+    for r in review_due[:15]:
+        flag = f"逾期 {r['overdue']} 天" if r["overdue"] > 0 else "今日到期"
+        review_lines.append(f"- [{r['round']}] {r['title']}（{flag}）")
+
+    # 新题
+    new_todo = []
+    for row in rows:
+        if row["r1"] and row["r1"] not in ("", "—"):
+            continue
+        m = re.search(r"\[(.+?)\]", row["title"])
+        title = m.group(1) if m else row["title"]
+        cat = SLUG_CATEGORY.get(row.get("title_slug", ""), "")
+        new_todo.append(f"- {title}（{row['difficulty']}，{cat}）")
+
+    # 待优化
+    opt_lines = []
+    for o in optimizations[:10]:
+        rt = o.get("runtime_pct", 0) or 0
+        opt_lines.append(f"- {o.get('title', '')}（runtime {rt:.0f}%）")
+
+    per = stats["per_round"]
+    return _CHAT_SYSTEM_PROMPT.format(
+        total=stats["total"],
+        done_rounds=stats["done_rounds"],
+        total_rounds=stats["total_rounds"],
+        rate=stats["rate"],
+        done_problems=stats["done_problems"],
+        streak=streak,
+        total_days=total_days,
+        est=est,
+        r1=per["r1"], r2=per["r2"], r3=per["r3"], r4=per["r4"], r5=per["r5"],
+        category_stats="\n".join(cat_lines) or "暂无数据",
+        review_count=len(review_due),
+        review_list="\n".join(review_lines) or "无",
+        new_count=len(new_todo),
+        new_list="\n".join(new_todo[:15]) or "已全部完成 R1",
+        opt_count=len(optimizations),
+        opt_list="\n".join(opt_lines) or "无",
+    )
+
+
+def chat(user_message: str, history: list,
+         system_prompt: str = "") -> Optional[str]:
+    """发送对话消息，返回 AI 回复。
+
+    history: [{"role":"user","content":"..."},{"role":"assistant","content":"..."},...]
+    """
+    ai_config = get_ai_config()
+    if not ai_config["enabled"]:
+        return None
+
+    messages = list(history)
+    messages.append({"role": "user", "content": user_message})
+
+    reply = call_ai_messages(messages, ai_config, system=system_prompt)
+    return reply
