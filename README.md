@@ -1,5 +1,7 @@
 <div align="center">
 
+**English** | [中文](README-CN.md)
+
 # BrushUp
 
 **Study smarter, not harder.**
