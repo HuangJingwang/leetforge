@@ -225,7 +225,9 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .nav-sep { height:1px; background:var(--border); margin:8px 20px; }
 .user-profile { display:flex; align-items:center; gap:10px; padding:10px 20px 14px; border-bottom:1px solid var(--border); margin-bottom:8px; }
 .user-avatar { width:32px; height:32px; border-radius:50%; border:2px solid var(--border); object-fit:cover; }
-.user-name { font-size:13px; color:var(--text); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.user-name { font-size:13px; color:var(--text); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.logout-btn { background:none; border:1px solid var(--border); color:var(--dim); width:26px; height:26px; border-radius:50%; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center; transition:all var(--transition); flex-shrink:0; }
+.logout-btn:hover { border-color:var(--red); color:var(--red); }
 .sidebar-footer { margin-top:auto; padding:12px 20px; border-top:1px solid var(--border); }
 .sidebar-info { font-size:11px; color:var(--border); }
 .lang-toggle { display:flex; gap:4px; margin-top:8px; }
@@ -548,6 +550,7 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
   <div class="user-profile" id="user-profile" style="display:none">
     <img id="user-avatar" alt="" class="user-avatar">
     <span id="user-name" class="user-name"></span>
+    <button id="user-logout-btn" class="logout-btn" title="Switch Account">&#8635;</button>
   </div>
   <div class="nav-item active" data-tab="dashboard">
     <span class="nav-icon">&#128200;</span><span data-i18n="nav_dashboard">总览</span>
@@ -956,6 +959,12 @@ const D = __DATA_JSON__;
     if(!p.avatar) document.getElementById('user-avatar').style.display='none';
   }
 })();
+
+// ====== Logout ======
+document.getElementById('user-logout-btn').addEventListener('click',function(){
+  if(!confirm('Log out and switch account?\n\nRun "leetcode --login" in terminal to log in again.')) return;
+  fetch('/api/logout',{method:'POST'}).then(function(){location.reload();});
+});
 
 // ====== Tab Navigation ======
 function switchTab(tabName){
@@ -2078,6 +2087,21 @@ def serve_web(
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
+            elif self.path == "/api/logout":
+                from .config import COOKIES_FILE, DATA_DIR
+                # 删除 cookies 和 user profile
+                if COOKIES_FILE.exists():
+                    COOKIES_FILE.unlink()
+                pf = DATA_DIR / "user_profile.json"
+                if pf.exists():
+                    pf.unlink()
+                body = json.dumps({"ok": True}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.wfile.write(body)
+                return
             elif self.path == "/api/data":
                 fresh = _reload_data()
                 body = json.dumps(fresh, ensure_ascii=False).encode("utf-8")
