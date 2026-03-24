@@ -306,6 +306,10 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 
 /* Resume */
 .resume-layout { display:grid; grid-template-columns:1fr 1fr; gap:16px; height:calc(100vh - 120px); }
+.resume-layout.preview-mode { grid-template-columns:1fr 1fr; }
+.resume-preview-wrap { display:none; overflow-y:auto; }
+.resume-layout.preview-mode .resume-left { display:none; }
+.resume-layout.preview-mode .resume-preview-wrap { display:block; }
 .resume-left,.resume-right { display:flex; flex-direction:column; gap:12px; overflow-y:auto; }
 .resume-actions { display:flex; gap:8px; flex-wrap:wrap; }
 .resume-actions button,.resume-actions a {
@@ -331,6 +335,26 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .resume-score { display:inline-block; font-size:32px; font-weight:bold; color:var(--accent); }
 .resume-empty { text-align:center; padding:40px; color:var(--dim); }
 .resume-empty .icon { font-size:40px; margin-bottom:12px; }
+/* LapisCV Preview */
+.lapis-preview { background:#fff; color:#353a42; border-radius:8px; padding:20mm; font-family:-apple-system,'Noto Sans SC','Source Han Sans CN',sans-serif; font-size:10pt; line-height:1.8; box-shadow:0 0 12px rgba(0,0,0,0.15); min-height:100%; }
+.lapis-preview h1 { font-size:16pt; text-align:center; border-bottom:none; color:#353a42; margin:0; line-height:1.5; }
+.lapis-preview h2 { font-size:12pt; color:#4870ad; border-bottom:1px solid rgba(72,112,173,0.4); margin-top:2.4mm; margin-bottom:1.9mm; padding:1mm 0; line-height:1; }
+.lapis-preview h3 { font-size:10.5pt; color:#353a42; line-height:1.8; margin:0; }
+.lapis-preview blockquote { text-align:center; border-left:none; padding:0; margin:0; font-size:9.5pt; color:#353a42; }
+.lapis-preview blockquote p { text-align:center; }
+.lapis-preview a { color:#4870ad; text-decoration:none; }
+.lapis-preview code { background:#f6f8fa; color:#353a42; font-size:10pt; padding:0 3px; border-radius:2px; font-family:'JetBrains Mono',Monaco,monospace; }
+.lapis-preview strong { color:#353a42; }
+.lapis-preview ul { list-style-type:disc; padding-inline-start:3mm; }
+.lapis-preview ol { padding-inline-start:5mm; }
+.lapis-preview li { padding-left:1.5mm; margin:0; }
+.lapis-preview p { margin:0; }
+.lapis-preview div[alt="entry-title"] { display:flex; justify-content:space-between; align-items:center; }
+.lapis-preview div[alt="entry-title"] p { color:#666; font-size:9.5pt; }
+.lapis-preview img[alt="avatar"] { float:right; width:28mm; height:28mm; border-radius:50%; border:2px solid #dae3ea; object-fit:cover; margin:0 0 0 3mm; }
+.preview-toggle { background:var(--card); border:1px solid var(--border); color:var(--accent); padding:8px 16px; border-radius:6px; font-size:13px; cursor:pointer; }
+.preview-toggle:hover { border-color:var(--accent); }
+.preview-toggle.active { background:var(--accent); color:#fff; }
 @media (max-width:768px) { .resume-layout { grid-template-columns:1fr; height:auto; } }
 
 /* Settings */
@@ -599,8 +623,12 @@ body.light .progress-table th { background:#f6f8fa; }
         <button class="primary" id="resume-analyze-btn" data-i18n="resume_analyze">AI 分析</button>
         <button id="resume-gen-interview-btn" data-i18n="resume_gen">生成面试题</button>
         <button id="resume-save-btn" data-i18n="resume_save">保存</button>
+        <button class="preview-toggle" id="resume-preview-toggle">Preview</button>
       </div>
-      <textarea class="resume-textarea" id="resume-input" placeholder="在此粘贴简历内容...&#10;&#10;支持纯文本或 LaTeX 格式。&#10;可先下载左上方的 LaTeX 模板，填入你的信息后粘贴到此处。" data-i18n="resume_ph"></textarea>
+      <textarea class="resume-textarea" id="resume-input" placeholder="在此粘贴简历内容（Markdown 格式）...&#10;&#10;可下载 LapisCV 模板，填入信息后粘贴到此处，点击 Preview 预览。" data-i18n="resume_ph"></textarea>
+    </div>
+    <div class="resume-preview-wrap">
+      <div class="lapis-preview" id="resume-preview-content"></div>
     </div>
     <div class="resume-right">
       <div class="resume-analysis" id="resume-analysis">
@@ -725,7 +753,7 @@ var I18N={
     ai_analysis:'AI 分析',btn_expand:'展开',btn_collapse:'收起',
     runtime:'运行时间：',memory:'内存：',show_code:'查看代码',hide_code:'收起代码',
     resume_dl:'下载简历模板',resume_analyze:'AI 分析',resume_gen:'生成面试题',resume_save:'保存',
-    resume_saved:'已保存',resume_analyzing:'分析中...',resume_ph:'在此粘贴简历内容...\n\n支持纯文本或 LaTeX 格式。\n可先下载左上方的 LaTeX 模板，填入你的信息后粘贴到此处。',
+    resume_saved:'已保存',resume_analyzing:'分析中...',resume_ph:'在此粘贴简历内容（Markdown 格式）...\n\n可下载 LapisCV 模板，填入信息后粘贴，点击 Preview 预览。',
     resume_empty:'在左侧粘贴简历内容，然后点击「AI 分析」',resume_chat_ph:'向 AI 提问改进建议...',
     interview_empty:'在「简历优化」页面粘贴简历后，点击「生成面试题」',
     interview_start:'开始面试',interview_starting:'启动中...',interview_status_idle:'未开始',
@@ -771,7 +799,7 @@ var I18N={
     ai_analysis:'AI Analysis',btn_expand:'Show',btn_collapse:'Hide',
     runtime:'Runtime: ',memory:'Memory: ',show_code:'Show Code',hide_code:'Hide Code',
     resume_dl:'Download Template',resume_analyze:'AI Analyze',resume_gen:'Generate Questions',resume_save:'Save',
-    resume_saved:'Saved!',resume_analyzing:'Analyzing...',resume_ph:'Paste your resume content here...\n\nSupports plain text or LaTeX format.',
+    resume_saved:'Saved!',resume_analyzing:'Analyzing...',resume_ph:'Paste resume content (Markdown)...\n\nDownload LapisCV template, fill in, paste here, click Preview.',
     resume_empty:'Paste your resume on the left, then click "AI Analyze"',resume_chat_ph:'Ask AI for resume improvement...',
     interview_empty:'Paste resume in "Resume" tab, then click "Generate Questions"',
     interview_start:'Start Interview',interview_starting:'Starting...',interview_status_idle:'Not Started',
@@ -1137,6 +1165,9 @@ function mdToHtml(md){
   var input=document.getElementById('resume-input');
   var analyzeBtn=document.getElementById('resume-analyze-btn');
   var saveBtn=document.getElementById('resume-save-btn');
+  var previewToggle=document.getElementById('resume-preview-toggle');
+  var previewContent=document.getElementById('resume-preview-content');
+  var resumeLayout=document.querySelector('.resume-layout');
   var analysisDiv=document.getElementById('resume-analysis');
   var chatMsgs=document.getElementById('resume-chat-messages');
   var chatInput=document.getElementById('resume-chat-input');
@@ -1164,6 +1195,24 @@ function mdToHtml(md){
     chatMsgs.appendChild(div);
     chatMsgs.scrollTop=chatMsgs.scrollHeight;
   }
+
+  // Preview toggle
+  previewToggle.addEventListener('click',function(){
+    var isPreview=resumeLayout.classList.toggle('preview-mode');
+    previewToggle.classList.toggle('active',isPreview);
+    previewToggle.textContent=isPreview?'Edit':'Preview';
+    if(isPreview){
+      var md=input.value||'';
+      previewContent.innerHTML=typeof marked!=='undefined'?marked.parse(md):md.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+    }
+  });
+
+  // Auto-update preview on input
+  input.addEventListener('input',function(){
+    if(resumeLayout.classList.contains('preview-mode')){
+      previewContent.innerHTML=typeof marked!=='undefined'?marked.parse(input.value||''):input.value;
+    }
+  });
 
   saveBtn.addEventListener('click',function(){
     fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
