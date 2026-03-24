@@ -19,101 +19,71 @@ RESUME_CHAT_FILE = DATA_DIR / "resume_chat_history.json"
 # LaTeX 简历模板
 # ---------------------------------------------------------------------------
 
-LATEX_TEMPLATE = r"""%!TEX program = xelatex
-\documentclass[11pt,a4paper]{article}
+RESUME_TEMPLATE = """# 张三
 
-% ==================== 宏包 ====================
-\usepackage[margin=1.8cm]{geometry}
-\usepackage{ctex}                    % 中文支持（XeLaTeX 编译）
-\usepackage{titlesec}
-\usepackage{enumitem}
-\usepackage{hyperref}
-\usepackage{xcolor}
-\usepackage{tabularx}
-\usepackage{multicol}
+> `138-0000-0000` &emsp; `zhangsan@example.com` &emsp; [GitHub](https://github.com/zhangsan) &emsp; [LinkedIn](https://linkedin.com/in/zhangsan)
 
-% ==================== 样式 ====================
-\pagestyle{empty}
-\setlength{\parindent}{0pt}
-\definecolor{accent}{HTML}{2563EB}
-\definecolor{textgray}{HTML}{4B5563}
-\hypersetup{colorlinks=true,urlcolor=accent,linkcolor=accent}
+## 教育经历
 
-\titleformat{\section}{\large\bfseries\color{accent}}{}{0em}{}[\color{accent}\titlerule]
-\titlespacing{\section}{0pt}{14pt}{6pt}
+<div alt="entry-title">
+    <h3>XX 大学 - 硕士 - 计算机科学与技术</h3>
+    <p>2022.09 - 2025.06</p>
+</div>
 
-% 条目宏：公司/学校 | 角色 | 补充 | 时间
-\newcommand{\entry}[4]{%
-  \textbf{#1} \hfill {\small\color{textgray}#4} \\
-  {\color{textgray}#2\hfill #3} \vspace{2pt}
-}
+- GPA：3.8 / 4.0，一等学业奖学金（前 5%），校级优秀毕业生
+- 核心课程：高级算法、分布式系统、数据库内核、机器学习
 
-% ==================== 正文 ====================
-\begin{document}
+<div alt="entry-title">
+    <h3>XX 大学 - 学士 - 软件工程</h3>
+    <p>2018.09 - 2022.06</p>
+</div>
 
-% ---------- 个人信息 ----------
-\begin{center}
-  {\LARGE\bfseries 张三} \\[6pt]
-  {\color{textgray}
-    \href{mailto:zhangsan@example.com}{zhangsan@example.com} $\cdot$
-    138-0000-0000 $\cdot$
-    \href{https://github.com/zhangsan}{github.com/zhangsan} $\cdot$
-    \href{https://linkedin.com/in/zhangsan}{LinkedIn}
-  }
-\end{center}
+- GPA：3.6 / 4.0
 
-% ---------- 教育背景 ----------
-\section{教育背景}
+## 工作经历
 
-\entry{XX 大学}{计算机科学与技术 · 硕士}{GPA：3.8 / 4.0}{2022.09 -- 2025.06}
-\begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
-  \item 核心课程：高级算法、分布式系统、数据库内核、机器学习
-  \item 一等学业奖学金（前 5\%），校级优秀毕业生
-\end{itemize}
+<div alt="entry-title">
+    <h3>后端开发工程师（实习） - XX 科技有限公司</h3>
+    <p>2024.06 - 2024.09</p>
+</div>
 
-\vspace{4pt}
-\entry{XX 大学}{软件工程 · 学士}{GPA：3.6 / 4.0}{2018.09 -- 2022.06}
+技术栈：Go / MySQL / Redis / Kafka
 
-% ---------- 工作/实习经历 ----------
-\section{工作经历}
+- 主导用户中心微服务重构，将单体服务拆分为 5 个独立模块，接口 QPS 提升 40%
+- 设计基于 Redis + Lua 的分布式限流方案，稳定支撑日均 500 万次 API 调用
+- 定位并优化 12 条慢查询 SQL，核心接口 P99 延迟从 800ms 降至 120ms
 
-\entry{XX 科技有限公司}{后端开发工程师（实习）}{Go / MySQL / Redis / Kafka}{2024.06 -- 2024.09}
-\begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
-  \item 主导用户中心微服务重构，将单体服务拆分为 5 个独立模块，接口 QPS 提升 40\%
-  \item 设计基于 Redis + Lua 的分布式限流方案，稳定支撑日均 500 万次 API 调用
-  \item 定位并优化 12 条慢查询 SQL，核心接口 P99 延迟从 800ms 降至 120ms
-\end{itemize}
+## 项目经历
 
-% ---------- 项目经历 ----------
-\section{项目经历}
+<div alt="entry-title">
+    <h3>分布式键值存储引擎</h3>
+    <a href="https://github.com/zhangsan/kv-engine">github.com/zhangsan/kv-engine</a>
+</div>
 
-\entry{分布式键值存储引擎}{个人项目 · Go}{Raft / LSM-Tree / gRPC}{2024.03 -- 2024.05}
-\begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
-  \item 基于 Raft 共识算法实现 3 节点数据复制，支持自动选主、日志压缩和快照恢复
-  \item 存储层采用 LSM-Tree + WAL 架构，写入吞吐量达 10 万 ops/s
-  \item 完整单元测试 + 混沌测试（网络分区、节点宕机），代码覆盖率 85\%
-\end{itemize}
+个人项目 · Go / Raft / LSM-Tree / gRPC（2024.03 - 2024.05）
 
-\vspace{4pt}
-\entry{BrushUp — LeetCode 刷题锻造台}{开源项目 · Python}{ECharts / GraphQL / AI}{2025.01 -- 至今}
-\begin{itemize}[nosep,leftmargin=1.5em,topsep=2pt]
-  \item 自动同步 LeetCode 刷题记录，基于间隔重复算法推送复习计划
-  \item 接入 AI 对比官方题解，自动分析代码复杂度并给出优化建议
-  \item 交互式 Web 看板（7 标签页），涵盖进度追踪、数据可视化、AI 对话
-\end{itemize}
+- 基于 Raft 共识算法实现 3 节点数据复制，支持自动选主、日志压缩和快照恢复
+- 存储层采用 LSM-Tree + WAL 架构，写入吞吐量达 10 万 ops/s
+- 完整单元测试 + 混沌测试（网络分区、节点宕机），代码覆盖率 85%
 
-% ---------- 专业技能 ----------
-\section{专业技能}
+<div alt="entry-title">
+    <h3>BrushUp — LeetCode 刷题助手</h3>
+    <a href="https://github.com/zhangsan/brushup">github.com/zhangsan/brushup</a>
+</div>
 
-\begin{tabularx}{\textwidth}{@{}l@{\hspace{12pt}}X@{}}
-  \textbf{编程语言} & Go, Python, Java, C++, SQL, JavaScript / TypeScript \\[2pt]
-  \textbf{框架 / 中间件} & Gin, Spring Boot, React, gRPC, Protobuf \\[2pt]
-  \textbf{基础设施} & MySQL, Redis, Kafka, Docker, Kubernetes, Linux \\[2pt]
-  \textbf{工具链} & Git, GitHub Actions, Prometheus, Grafana, Nginx \\[2pt]
-  \textbf{算法能力} & LeetCode Hot100 $\times$ 5 轮，ACM 省赛银牌 \\
-\end{tabularx}
+开源项目 · Python / ECharts / GraphQL / AI（2025.01 - 至今）
 
-\end{document}
+- 自动同步 LeetCode 刷题记录，基于间隔重复算法推送复习计划
+- 接入 AI 对比官方题解，自动分析代码复杂度并给出优化建议
+- 交互式 Web 看板，涵盖进度追踪、数据可视化、AI 对话
+
+## 专业技能
+
+- **编程语言**：Go, Python, Java, C++, SQL, JavaScript / TypeScript
+- **框架 / 中间件**：Gin, Spring Boot, React, gRPC, Protobuf
+- **基础设施**：MySQL, Redis, Kafka, Docker, Kubernetes, Linux
+- **工具链**：Git, GitHub Actions, Prometheus, Grafana, Nginx
+- **算法能力**：LeetCode Hot100 × 5 轮，ACM 省赛银牌
 """
 
 # ---------------------------------------------------------------------------

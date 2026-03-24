@@ -595,7 +595,7 @@ body.light .progress-table th { background:#f6f8fa; }
   <div class="resume-layout">
     <div class="resume-left">
       <div class="resume-actions">
-        <a href="/api/resume/template" download="resume_template.tex" data-i18n="resume_dl">下载 LaTeX 模板</a>
+        <a href="/api/resume/template" download="resume_template.md" data-i18n="resume_dl">下载简历模板</a>
         <button class="primary" id="resume-analyze-btn" data-i18n="resume_analyze">AI 分析</button>
         <button id="resume-gen-interview-btn" data-i18n="resume_gen">生成面试题</button>
         <button id="resume-save-btn" data-i18n="resume_save">保存</button>
@@ -724,7 +724,7 @@ var I18N={
     empty:'暂无数据',no_review:'今日无待复习题目，继续保持！',no_opt:'所有提交性能表现良好，无需优化',
     ai_analysis:'AI 分析',btn_expand:'展开',btn_collapse:'收起',
     runtime:'运行时间：',memory:'内存：',show_code:'查看代码',hide_code:'收起代码',
-    resume_dl:'下载 LaTeX 模板',resume_analyze:'AI 分析',resume_gen:'生成面试题',resume_save:'保存',
+    resume_dl:'下载简历模板',resume_analyze:'AI 分析',resume_gen:'生成面试题',resume_save:'保存',
     resume_saved:'已保存',resume_analyzing:'分析中...',resume_ph:'在此粘贴简历内容...\n\n支持纯文本或 LaTeX 格式。\n可先下载左上方的 LaTeX 模板，填入你的信息后粘贴到此处。',
     resume_empty:'在左侧粘贴简历内容，然后点击「AI 分析」',resume_chat_ph:'向 AI 提问改进建议...',
     interview_empty:'在「简历优化」页面粘贴简历后，点击「生成面试题」',
@@ -770,7 +770,7 @@ var I18N={
     empty:'No data yet',no_review:'No reviews due. Keep it up!',no_opt:'All submissions are well optimized!',
     ai_analysis:'AI Analysis',btn_expand:'Show',btn_collapse:'Hide',
     runtime:'Runtime: ',memory:'Memory: ',show_code:'Show Code',hide_code:'Hide Code',
-    resume_dl:'Download LaTeX Template',resume_analyze:'AI Analyze',resume_gen:'Generate Questions',resume_save:'Save',
+    resume_dl:'Download Template',resume_analyze:'AI Analyze',resume_gen:'Generate Questions',resume_save:'Save',
     resume_saved:'Saved!',resume_analyzing:'Analyzing...',resume_ph:'Paste your resume content here...\n\nSupports plain text or LaTeX format.',
     resume_empty:'Paste your resume on the left, then click "AI Analyze"',resume_chat_ph:'Ask AI for resume improvement...',
     interview_empty:'Paste resume in "Resume" tab, then click "Generate Questions"',
@@ -1759,11 +1759,11 @@ def serve_web(
                 self.end_headers()
                 self.wfile.write(body)
             elif self.path == "/api/resume/template":
-                from .resume import LATEX_TEMPLATE
-                body = LATEX_TEMPLATE.encode("utf-8")
+                from .resume import RESUME_TEMPLATE
+                body = RESUME_TEMPLATE.encode("utf-8")
                 self.send_response(200)
-                self.send_header("Content-Type", "application/x-tex; charset=utf-8")
-                self.send_header("Content-Disposition", "attachment; filename=resume_template.tex")
+                self.send_header("Content-Type", "text/markdown; charset=utf-8")
+                self.send_header("Content-Disposition", "attachment; filename=resume_template.md")
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
