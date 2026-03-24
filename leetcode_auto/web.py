@@ -623,7 +623,7 @@ body.light .progress-table th { background:#f6f8fa; }
         <button class="primary" id="resume-analyze-btn" data-i18n="resume_analyze">AI 分析</button>
         <button id="resume-gen-interview-btn" data-i18n="resume_gen">生成面试题</button>
         <button id="resume-save-btn" data-i18n="resume_save">保存</button>
-        <button class="preview-toggle" id="resume-preview-toggle">Preview</button>
+        <button class="preview-toggle" id="resume-preview-toggle" data-i18n="resume_preview">预览</button>
       </div>
       <textarea class="resume-textarea" id="resume-input" placeholder="在此粘贴简历内容（Markdown 格式）...&#10;&#10;可下载 LapisCV 模板，填入信息后粘贴到此处，点击 Preview 预览。" data-i18n="resume_ph"></textarea>
     </div>
@@ -752,7 +752,7 @@ var I18N={
     empty:'暂无数据',no_review:'今日无待复习题目，继续保持！',no_opt:'所有提交性能表现良好，无需优化',
     ai_analysis:'AI 分析',btn_expand:'展开',btn_collapse:'收起',
     runtime:'运行时间：',memory:'内存：',show_code:'查看代码',hide_code:'收起代码',
-    resume_dl:'下载简历模板',resume_analyze:'AI 分析',resume_gen:'生成面试题',resume_save:'保存',
+    resume_dl:'下载简历模板',resume_preview:'预览',resume_edit:'编辑',resume_updated:'> ✅ 简历已更新，请查看左侧编辑器或切换到预览查看效果。',resume_analyze:'AI 分析',resume_gen:'生成面试题',resume_save:'保存',
     resume_saved:'已保存',resume_analyzing:'分析中...',resume_ph:'在此粘贴简历内容（Markdown 格式）...\n\n可下载 LapisCV 模板，填入信息后粘贴，点击 Preview 预览。',
     resume_empty:'在左侧粘贴简历内容，然后点击「AI 分析」',resume_chat_ph:'向 AI 提问改进建议...',
     interview_empty:'在「简历优化」页面粘贴简历后，点击「生成面试题」',
@@ -798,7 +798,7 @@ var I18N={
     empty:'No data yet',no_review:'No reviews due. Keep it up!',no_opt:'All submissions are well optimized!',
     ai_analysis:'AI Analysis',btn_expand:'Show',btn_collapse:'Hide',
     runtime:'Runtime: ',memory:'Memory: ',show_code:'Show Code',hide_code:'Hide Code',
-    resume_dl:'Download Template',resume_analyze:'AI Analyze',resume_gen:'Generate Questions',resume_save:'Save',
+    resume_dl:'Download Template',resume_preview:'Preview',resume_edit:'Edit',resume_updated:'> ✅ Resume updated. Check the editor or switch to Preview.',resume_analyze:'AI Analyze',resume_gen:'Generate Questions',resume_save:'Save',
     resume_saved:'Saved!',resume_analyzing:'Analyzing...',resume_ph:'Paste resume content (Markdown)...\n\nDownload LapisCV template, fill in, paste here, click Preview.',
     resume_empty:'Paste your resume on the left, then click "AI Analyze"',resume_chat_ph:'Ask AI for resume improvement...',
     interview_empty:'Paste resume in "Resume" tab, then click "Generate Questions"',
@@ -1200,7 +1200,7 @@ function mdToHtml(md){
   previewToggle.addEventListener('click',function(){
     var isPreview=resumeLayout.classList.toggle('preview-mode');
     previewToggle.classList.toggle('active',isPreview);
-    previewToggle.textContent=isPreview?'Edit':'Preview';
+    previewToggle.textContent=isPreview?t('resume_edit'):t('resume_preview');
     if(isPreview){
       var md=input.value||'';
       previewContent.innerHTML=typeof marked!=='undefined'?marked.parse(md):md.replace(/</g,'&lt;').replace(/\n/g,'<br>');
@@ -1252,25 +1252,28 @@ function mdToHtml(md){
     chatMsgs.appendChild(typing);
     chatMsgs.scrollTop=chatMsgs.scrollHeight;
     fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'chat',message:text,history:resumeHistory})
+      body:JSON.stringify({action:'chat',message:text,history:resumeHistory,content:input.value})
     }).then(r=>r.json()).then(function(d){
       chatMsgs.removeChild(typing);
       chatSend.disabled=false;
       if(d.reply){
         // Check if AI returned a full resume update
         var resumeMatch=d.reply.match(/```resume\n([\s\S]*?)```/);
+        var displayReply=d.reply;
         if(resumeMatch){
           var newResume=resumeMatch[1].trim();
           input.value=newResume;
-          // Auto-save
+          // Save immediately
           fetch('/api/resume',{method:'POST',headers:{'Content-Type':'application/json'},
             body:JSON.stringify({action:'save',content:newResume})});
           // Update preview if in preview mode
           if(resumeLayout.classList.contains('preview-mode')){
             previewContent.innerHTML=typeof marked!=='undefined'?marked.parse(newResume):newResume;
           }
+          // Replace raw resume block with a clean notice in chat
+          displayReply=d.reply.replace(/```resume\n[\s\S]*?```/,t('resume_updated'));
         }
-        appendResumeMsg('assistant',d.reply);
+        appendResumeMsg('assistant',displayReply);
         resumeHistory.push({role:'user',content:text});
         resumeHistory.push({role:'assistant',content:d.reply});
       } else {
@@ -2045,7 +2048,10 @@ def serve_web(
                 elif action == "chat":
                     msg = req.get("message", "")
                     history = req.get("history", [])
-                    resume_content = load_resume()
+                    # 优先用前端传来的最新内容
+                    resume_content = req.get("content") or load_resume()
+                    if req.get("content"):
+                        save_resume(req["content"])
                     analysis_text = load_analysis().get("text", "")
                     reply = chat_resume(msg, history, resume_content, analysis_text)
                     if reply:
