@@ -2,135 +2,166 @@
 
 # BrushUp
 
-**刷题、复习、简历，一个工具搞定。**
+**Study smarter, not harder.**
 
 [![Python](https://img.shields.io/badge/Python-3.9+-3776ab?logo=python&logoColor=white)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)]()
 
-自动同步 LeetCode 刷题记录，间隔复习不遗漏，AI 分析代码质量，顺便还能帮你改简历。
+LeetCode auto-sync, spaced repetition, AI code review, resume polish, mock interview.
 
 </div>
 
 ---
 
-## 它能做什么
+## What it does
 
-**刷题方面：**
-- 自动拉取 LeetCode CN 的 AC 记录，不用手动打卡
-- 每题 5 轮间隔复习（1/3/7/14 天），到期自动提醒
-- AI 对比官方题解，指出你的代码哪里可以更优，给出改进版本
-- 15 个算法分类的掌握度雷达图，薄弱点一目了然
+**LeetCode study:**
+- Auto-sync AC submissions from LeetCode CN — no manual tracking
+- Configurable spaced repetition (default 5 rounds: +1/3/7/14 days), auto-remind when due
+- AI compares your code to official solutions, shows complexity diff and improved version
+- Per-problem notes, AI review history for every round
+- 3 built-in problem lists: Hot 100, Sword Offer 75, Top Interview 150
+- Same-category daily recommendations (weakest topics first)
+- GitHub-style contribution heatmap, trend analysis, streak tracking
 
-**简历方面：**
-- 提供 LaTeX 简历模板
-- AI 逐项分析简历内容，给出修改建议
-- 可以根据简历生成面试题，AI 模拟面试官逐题追问
+**Resume & Interview:**
+- LapisCV Markdown template with live preview
+- AI resume analysis, chat-to-edit (AI modifies resume directly), version history with rollback
+- Multiple resume profiles (e.g. "Backend", "Full-stack")
+- One-click interview question generation from resume
+- AI mock interviewer with follow-up questions
+- Structured interview report (6-dimension scoring)
 
-## 快速开始
+## Quick start
 
 ```bash
 git clone https://github.com/HuangJingwang/brushup.git
 cd leetcode_auto && pip install -e .
 
-leetcode           # 首次运行：登录 + 同步
-leetcode --web     # 打开 Web 看板
+leetcode --web     # opens web dashboard, login from browser
 ```
 
-## Web 看板
+## Web Dashboard
 
-`leetcode --web` 会在浏览器中打开一个本地看板，包含以下页面：
+`leetcode --web` opens a local dashboard with 9 tabs:
 
-| 页面 | 内容 |
-|:-----|:-----|
-| 总览 | 统计卡片、今日推荐、完成率仪表盘、各轮进度、分类雷达、热力图 |
-| AI 对话 | 基于你的刷题数据回答问题，推荐题目、制定计划 |
-| 进度表 | Hot100 完整进度，支持搜索和筛选 |
-| 待复习 | 今日到期的复习题目 |
-| 打卡记录 | 每日打卡时间线 + 趋势图 |
-| 代码优化 | AI 代码分析：复杂度对比、优化建议、改进代码 |
-| 简历优化 | 简历分析 + 面试题生成 + 模拟面试 |
+| Tab | What's in it |
+|:----|:-------------|
+| **Dashboard** | Stats cards, today's tasks, completion gauge, round progress, category radar, daily trend, GitHub-style heatmap, review calendar, trend analysis |
+| **AI Chat** | Study assistant with full context of your progress |
+| **Progress** | Full problem table with search, multi-filter, notes, per-round AI review history, CSV export |
+| **Review** | Today's due problems sorted by overdue days |
+| **Check-in** | Daily timeline + 30-day trend chart |
+| **Optimize** | AI code analysis: complexity comparison, suggestions, rewritten code |
+| **Resume** | Template download, LapisCV preview, AI analysis, chat-to-edit, version history |
+| **Mock Interview** | Generated questions + AI interviewer + evaluation report |
+| **Settings** | Problem list, rounds, intervals, deadline, daily pace calculator |
 
-支持中英文切换，后台同步后自动刷新。
+Features: EN/ZH toggle, dark/light theme, keyboard shortcuts (1-9), 30s auto-refresh, mobile responsive, login/logout from browser.
 
-## 主要特点
+## Key features
 
-### AI 代码分析
+### AI code analysis
+Each sync checks runtime/memory percentile. Below 50%? AI fetches the official solution, compares your code, outputs: complexity diff → specific issues → improved code.
 
-同步时自动检测提交的 runtime/memory 百分位。表现不理想的题目，AI 会获取官方题解进行对比，输出复杂度分析、具体问题和改进后的代码。
+Every round's submission gets a per-problem AI review, viewable in the progress table.
 
-### 间隔复习
+### Configurable study plan
+| Setting | Default | Options |
+|:--------|:--------|:--------|
+| Rounds | 5 | 2–10 |
+| Intervals | 1, 3, 7, 14 days | Custom |
+| Problem list | Hot 100 | Hot 100 / Sword Offer 75 / Top 150 |
+| Deadline | None | Set date → auto-calculate daily pace |
 
-| R1 | R2 (+1天) | R3 (+3天) | R4 (+7天) | R5 (+14天) |
-|:--:|:---------:|:---------:|:---------:|:----------:|
-| 首次做题 | 次日巩固 | 短期记忆 | 中期巩固 | 长期记忆 |
+### Cross-scene memory
+Study chat, resume analysis, and mock interview share memory. Weak points found in interview flow back to study recommendations. History auto-compresses when long.
 
-自动追踪每道题的完成日期，每天告诉你该复习哪些题。
+### Resume workflow
+Paste resume → Preview (LapisCV style) → AI Analyze → Chat to improve ("rewrite my work experience with STAR method") → Resume auto-updates → Version history for rollback.
 
-### 跨场景记忆
+Multiple resume profiles, each with independent content/analysis/chat.
 
-刷题对话、简历分析、模拟面试之间共享记忆。比如面试中发现某个知识点不熟，这个信息会被记住，之后刷题时 AI 会针对性推荐相关题目。对话过长时自动压缩为摘要，不丢上下文。
+### Mock interview
+Generate questions from resume → Start interview → AI asks one question at a time, follows up, gives hints → End → Generate evaluation report with 6-dimension scoring.
 
-### 后台运行
+## AI configuration
 
-```bash
-leetcode --daemon 1h             # 每小时自动同步
-leetcode --remind-daemon         # 每天定时推送复习提醒
-```
-
-注册一次即可，关终端不影响。macOS / Linux / Windows 均支持。
-
-## AI 配置
-
-在 `~/.leetcode_auto/.env` 中添加（支持 OpenAI / Claude / 兼容接口）：
+Add to `~/.leetcode_auto/.env` (supports OpenAI / Claude / compatible APIs):
 
 ```bash
 AI_PROVIDER=openai
 AI_API_KEY=sk-xxx
-AI_MODEL=gpt-4o              # 可选
-AI_BASE_URL=https://...      # 可选
+AI_MODEL=gpt-4o              # optional
+AI_BASE_URL=https://...      # optional, for third-party endpoints
 ```
 
-不配置 AI 也能正常使用刷题同步和看板功能。
+Works without AI — sync and dashboard are fully functional, AI features are skipped.
 
-## 全部命令
+## All commands
 
 ```
-leetcode                   同步今日刷题 + AI 分析
-leetcode --web             Web 看板
-leetcode --chat            AI 对话（终端）
-leetcode --status          终端进度面板
-leetcode --heatmap         刷题热力图
-leetcode --optimize        待优化题目
-leetcode --weakness        薄弱点分析
-leetcode --report          每周报告
-leetcode --badge           SVG 进度徽章
-leetcode --login           重新登录
-leetcode --daemon <spec>   后台同步（30m / 1h / 23:00 / status / stop）
-leetcode --remind          今日待刷/待复习
-leetcode --remind-daemon   每日通知（start / status / stop）
+leetcode                   sync today's submissions + AI analysis
+leetcode --web             web dashboard (full UI)
+leetcode --chat            AI chat (terminal)
+leetcode --status          terminal progress panel
+leetcode --heatmap         contribution heatmap
+leetcode --optimize        optimization suggestions
+leetcode --weakness        category weakness analysis
+leetcode --report          weekly report
+leetcode --badge           SVG progress badge
+leetcode --login           browser login
+leetcode --daemon <spec>   background sync (30m / 1h / 23:00 / status / stop)
+leetcode --remind          today's study/review list
+leetcode --remind-daemon   daily notifications (start / status / stop)
+```
+
+## Architecture
+
+```
+leetcode_auto/
+├── cli.py              # CLI entry + all commands
+├── config.py           # Configuration, plan settings, AI config
+├── leetcode_api.py     # LeetCode API, auth, browser login
+├── progress.py         # Progress table, stats, review calculation
+├── sync.py             # Sync logic, checkin, dashboard
+├── ai_analyzer.py      # AI calls, chat, usage tracking
+├── memory.py           # Cross-chat shared memory + compression
+├── problem_data.py     # Per-problem notes, timer, AI reviews
+├── problem_lists.py    # Hot100, Offer75, Top150 definitions
+├── resume.py           # Resume management, analysis, interview
+├── features.py         # Rich TUI, heatmap, badge, report
+├── init_plan.py        # Problem categories, template generation
+├── daemon.py           # Background: LaunchAgent / systemd / schtasks
+└── web.py              # Web SPA: HTML/CSS/JS + HTTP server
 ```
 
 ## FAQ
 
 <details>
-<summary><b>Cookie 过期了怎么办？</b></summary>
-运行 <code>leetcode --login</code> 重新登录即可。
+<summary><b>Cookie expired?</b></summary>
+Click the login button in the web sidebar, or run <code>leetcode --login</code>.
 </details>
 
 <details>
-<summary><b>对话记录会保存吗？</b></summary>
-会。三个场景（刷题/简历/面试）各自保存历史，共享跨场景记忆。历史过长时自动压缩。
+<summary><b>Chat history saved?</b></summary>
+Yes. Study/resume/interview each save independently, with shared cross-scene memory. Auto-compressed when long.
 </details>
 
 <details>
-<summary><b>Web 看板需要联网吗？</b></summary>
-需要加载 ECharts 等 CDN 资源，刷题数据在本地。AI 功能需要联网。
+<summary><b>Need internet?</b></summary>
+ECharts/marked.js loaded from CDN. Study data is local. AI features need internet.
+</details>
+
+<details>
+<summary><b>AI costs?</b></summary>
+Token usage tracked per-call in ~/.leetcode_auto/ai_usage.json (90-day retention). Available in dashboard data.
 </details>
 
 ## Contributing
 
-欢迎提交 Issue 和 Pull Request。
+Issues and PRs welcome.
 
 ## License
 
