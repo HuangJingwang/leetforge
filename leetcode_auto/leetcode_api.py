@@ -9,7 +9,7 @@ from typing import Optional
 
 import requests
 
-from .config import LEETCODE_API_URL, COOKIES_FILE, load_credentials
+from .config import LEETCODE_API_URL, COOKIES_FILE, DATA_DIR, load_credentials
 
 CST = timezone(timedelta(hours=8))
 
@@ -37,6 +37,7 @@ def check_session(session: str, csrf: str) -> SessionCheckResult:
             isSignedIn
             userSlug
             username
+            avatar
         }
     }
     """
@@ -54,10 +55,32 @@ def check_session(session: str, csrf: str) -> SessionCheckResult:
         us = data.get("data", {}).get("userStatus", {})
         if us.get("isSignedIn"):
             slug = us.get("userSlug") or us.get("username")
+            avatar = us.get("avatar", "")
+            # 保存用户资料
+            _save_user_profile(slug, avatar)
             return SessionCheckResult(username=slug)
         return SessionCheckResult(expired=True)
     except Exception:
         return SessionCheckResult(network_error=True)
+
+
+def _save_user_profile(username: str, avatar: str):
+    """保存用户资料到本地。"""
+    profile = {"username": username, "avatar": avatar}
+    profile_file = DATA_DIR / "user_profile.json"
+    profile_file.write_text(
+        json.dumps(profile, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_user_profile() -> dict:
+    """加载保存的用户资料。"""
+    profile_file = DATA_DIR / "user_profile.json"
+    if profile_file.exists():
+        try:
+            return json.loads(profile_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, IOError):
+            pass
+    return {"username": "", "avatar": ""}
 
 
 def _ensure_chromium():

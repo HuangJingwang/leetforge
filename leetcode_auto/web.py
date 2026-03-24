@@ -172,6 +172,7 @@ def _build_comprehensive_data(
         "new_todo": new_todo,
         "plan_config": load_plan_config(),
         "ai_usage": __import__('leetcode_auto.ai_analyzer', fromlist=['get_ai_usage']).get_ai_usage(),
+        "user_profile": __import__('leetcode_auto.leetcode_api', fromlist=['load_user_profile']).load_user_profile(),
         "trend_stats": _compute_trends(checkin_data),
         "available_lists": {k: {"name": v["name"], "name_en": v["name_en"], "count": len(v["problems"])} for k, v in __import__('leetcode_auto.problem_lists', fromlist=['PROBLEM_LISTS']).PROBLEM_LISTS.items()},
         "problem_data": get_all_problem_data(),
@@ -222,6 +223,9 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:rgba(88,166,255,0.06); font-weight:500; }
 .nav-item .badge { background:var(--red); color:#fff; font-size:11px; padding:1px 6px; border-radius:10px; margin-left:auto; }
 .nav-sep { height:1px; background:var(--border); margin:8px 20px; }
+.user-profile { display:flex; align-items:center; gap:10px; padding:10px 20px 14px; border-bottom:1px solid var(--border); margin-bottom:8px; }
+.user-avatar { width:32px; height:32px; border-radius:50%; border:2px solid var(--border); object-fit:cover; }
+.user-name { font-size:13px; color:var(--text); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sidebar-footer { margin-top:auto; padding:12px 20px; border-top:1px solid var(--border); }
 .sidebar-info { font-size:11px; color:var(--border); }
 .lang-toggle { display:flex; gap:4px; margin-top:8px; }
@@ -541,6 +545,10 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
 
 <nav class="sidebar">
   <h1><span>BrushUp</span></h1>
+  <div class="user-profile" id="user-profile" style="display:none">
+    <img id="user-avatar" alt="" class="user-avatar">
+    <span id="user-name" class="user-name"></span>
+  </div>
   <div class="nav-item active" data-tab="dashboard">
     <span class="nav-icon">&#128200;</span><span data-i18n="nav_dashboard">总览</span>
   </div>
@@ -936,6 +944,18 @@ function switchTheme(theme){
 switchTheme(currentTheme);
 
 const D = __DATA_JSON__;
+
+// ====== User Profile ======
+(function(){
+  var p=D.user_profile;
+  if(p&&p.username){
+    var el=document.getElementById('user-profile');
+    document.getElementById('user-avatar').src=p.avatar||'';
+    document.getElementById('user-name').textContent=p.username;
+    el.style.display='flex';
+    if(!p.avatar) document.getElementById('user-avatar').style.display='none';
+  }
+})();
 
 // ====== Tab Navigation ======
 function switchTab(tabName){
