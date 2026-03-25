@@ -240,22 +240,38 @@ def _make_headers(session: str, csrf: str) -> dict:
     }
 
 
-def _fetch_submission_list(session: str, csrf: str, limit: int = 80) -> list[dict]:
-    """拉取最近提交列表，从 url 字段解析 titleSlug。"""
+def _extract_title_slug(url: str) -> str:
+    m = re.search(r"/problems/([^/]+)/submissions/", url or "")
+    return m.group(1) if m else ""
+
+
+def _fetch_submission_page(
+    session: str,
+    csrf: str,
+    limit: int = 80,
+    offset: int = 0,
+) -> tuple[list[dict], bool]:
+    """拉取一页提交列表，并补充 titleSlug。"""
     headers = _make_headers(session, csrf)
     payload = {
         "query": SUBMISSION_LIST_QUERY,
-        "variables": {"offset": 0, "limit": limit, "questionSlug": ""},
+        "variables": {"offset": offset, "limit": limit, "questionSlug": ""},
     }
     resp = requests.post(LEETCODE_API_URL, json=payload, headers=headers, timeout=15)
     resp.raise_for_status()
     data = resp.json()
     if "errors" in data:
         raise RuntimeError(f"LeetCode API 返回错误: {data['errors']}")
-    subs = data.get("data", {}).get("submissionList", {}).get("submissions") or []
+    payload = data.get("data", {}).get("submissionList", {}) or {}
+    subs = payload.get("submissions") or []
     for s in subs:
-        m = re.search(r"/problems/([^/]+)/submissions/", s.get("url", ""))
-        s["titleSlug"] = m.group(1) if m else ""
+        s["titleSlug"] = _extract_title_slug(s.get("url", ""))
+    return subs, bool(payload.get("hasNext"))
+
+
+def _fetch_submission_list(session: str, csrf: str, limit: int = 80) -> list[dict]:
+    """拉取最近提交列表，从 url 字段解析 titleSlug。"""
+    subs, _ = _fetch_submission_page(session, csrf, limit=limit, offset=0)
     return subs
 
 
@@ -270,6 +286,42 @@ def fetch_recent_all(username: str, session: str, csrf: str) -> list[dict]:
         return _fetch_submission_list(session, csrf, limit=80)
     except Exception:
         return []
+
+
+def fetch_accepted_history(
+    session: str,
+    csrf: str,
+    target_slugs: Optional[set[str]] = None,
+    page_size: int = 40,
+    max_pages: int = 200,
+) -> set[str]:
+    """分页拉取历史 AC 题目 slug，可选按目标题单过滤。"""
+    found: set[str] = set()
+    offset = 0
+
+    for _ in range(max_pages):
+        subs, has_next = _fetch_submission_page(
+            session, csrf, limit=page_size, offset=offset,
+        )
+        if not subs:
+            break
+
+        for sub in subs:
+            if sub.get("statusDisplay") != "Accepted":
+                continue
+            slug = sub.get("titleSlug", "")
+            if not slug:
+                continue
+            if target_slugs is None or slug in target_slugs:
+                found.add(slug)
+
+        if target_slugs and len(found) >= len(target_slugs):
+            break
+        if not has_next:
+            break
+        offset += len(subs)
+
+    return found
 
 
 SUBMISSION_DETAIL_QUERY = """

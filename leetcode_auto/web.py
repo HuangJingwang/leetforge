@@ -84,6 +84,11 @@ def _build_comprehensive_data(
     ]
     heatmap_data = [[e["date"].isoformat(), e["total"]] for e in checkin_data]
     per_round = [stats["per_round"][rk] for rk in ROUND_KEYS]
+    today_str = date.today().isoformat()
+    today_ac = sum(
+        1 for row in rows
+        if any((row.get(rk) or "").strip() == today_str for rk in ROUND_KEYS)
+    )
 
     # 构建进度表行数据
     table_rows = []
@@ -156,9 +161,11 @@ def _build_comprehensive_data(
 
     return {
         "total": stats["total"],
+        "started_problems": stats["per_round"].get("r1", 0),
         "total_rounds": stats["total_rounds"],
         "done_rounds": stats["done_rounds"],
         "done_problems": stats["done_problems"],
+        "today_ac": today_ac,
         "rate": round(stats["rate"], 1),
         "per_round": per_round,
         "streak": streak,
@@ -617,6 +624,7 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
   <div class="stats-row">
     <div class="stat-card"><div class="num">__DONE_ROUNDS__<span class="num-sub">/ __TOTAL_ROUNDS__</span></div><div class="label" data-i18n="stat_rounds">Completed Rounds</div></div>
     <div class="stat-card"><div class="num">__RATE__%</div><div class="label" data-i18n="stat_rate">Completion Rate</div></div>
+    <div class="stat-card"><div class="num">__TODAY_AC__</div><div class="label" data-i18n="stat_today_ac">Today AC</div></div>
     <div class="stat-card"><div class="num">__DONE_ALL__<span class="num-sub">/ __TOTAL__</span></div><div class="label" data-i18n="stat_pass">5-Round Pass</div></div>
     <div class="stat-card"><div class="num __STREAK_CLASS__">__STREAK__</div><div class="label" data-i18n="stat_streak">Streak Days</div></div>
     <div class="stat-card"><div class="num">__TOTAL_DAYS__</div><div class="label" data-i18n="stat_total_days">Total Days</div></div>
@@ -838,14 +846,14 @@ var I18N={
   zh:{
     nav_dashboard:'总览',nav_chat:'AI 对话',nav_progress:'进度表',nav_review:'待复习',
     nav_checkin:'打卡记录',nav_optimize:'代码优化',nav_resume:'简历优化',nav_interview:'模拟面试',
-    stat_rounds:'已完成轮次',stat_rate:'完成率',stat_pass:'5 轮全通',
+    stat_rounds:'已完成轮次',stat_rate:'完成率',stat_today_ac:'今日 AC',stat_pass:'5 轮全通',
     stat_streak:'连续打卡',stat_total_days:'累计打卡',stat_est:'预估完成',
     today_new:'今日新题',today_review:'今日复习',
     card_rate:'完成率',card_rounds:'各轮进度',card_radar:'分类能力',
     card_trend:'每日趋势',card_heatmap:'刷题热力图（近 365 天）',card_checkin_trend:'每日趋势',
     search_ph:'搜索题目...',diff_all:'全部难度',diff_easy:'简单',diff_medium:'中等',diff_hard:'困难',
     cat_all:'全部分类',status_all:'全部状态',status_ns:'未开始',status_ip:'进行中',status_done:'已完成',
-    clear_filter:'清除筛选',
+    clear_filter:'清除筛选',table_count:'整体进度 {problems_done}/{problems_total} 题 · 轮次 {done}/{rounds} · 显示 {shown}/{total} 题',
     th_title:'题目',th_diff:'难度',th_cat:'分类',th_status:'状态',
     chart_new:'新题',chart_review:'复习',
     r1_done:'R1 已全部完成！',remaining:'共 {n} 题待完成',
@@ -884,14 +892,14 @@ var I18N={
   en:{
     nav_dashboard:'Dashboard',nav_chat:'AI Chat',nav_progress:'Progress',nav_review:'Review',
     nav_checkin:'Check-in',nav_optimize:'Optimize',nav_resume:'Resume',nav_interview:'Mock Interview',
-    stat_rounds:'Completed Rounds',stat_rate:'Completion Rate',stat_pass:'5-Round Pass',
+    stat_rounds:'Completed Rounds',stat_rate:'Completion Rate',stat_today_ac:'Today AC',stat_pass:'5-Round Pass',
     stat_streak:'Streak Days',stat_total_days:'Total Days',stat_est:'Est. Completion',
     today_new:'Today: New',today_review:'Today: Review',
     card_rate:'Completion Rate',card_rounds:'Round Progress',card_radar:'Category Radar',
     card_trend:'Daily Trend',card_heatmap:'Heatmap (365 days)',card_checkin_trend:'Daily Trend',
     search_ph:'Search...',diff_all:'All Difficulty',diff_easy:'Easy',diff_medium:'Medium',diff_hard:'Hard',
     cat_all:'All Categories',status_all:'All Status',status_ns:'Not Started',status_ip:'In Progress',status_done:'Completed',
-    clear_filter:'Clear',
+    clear_filter:'Clear',table_count:'Overall {problems_done}/{problems_total} problems · {done}/{rounds} rounds · Showing {shown}/{total}',
     th_title:'Title',th_diff:'Difficulty',th_cat:'Category',th_status:'Status',
     chart_new:'New',chart_review:'Review',
     r1_done:'R1 all completed!',remaining:'{n} problems remaining',
@@ -1953,7 +1961,13 @@ function renderTable(){
     return true;
   });
 
-  document.getElementById('table-count').textContent='('+filtered.length+'/'+D.rows.length+')';
+  document.getElementById('table-count').textContent=t('table_count')
+    .replace('{problems_done}', D.started_problems||0)
+    .replace('{problems_total}', D.total||0)
+    .replace('{done}', D.done_rounds||0)
+    .replace('{rounds}', D.total_rounds||0)
+    .replace('{shown}', filtered.length)
+    .replace('{total}', D.rows.length);
   var pd=D.problem_data||{};
   var html='';
   var rKeys3=[];
@@ -2076,6 +2090,7 @@ def serve_web(
         html = html.replace("__DONE_ROUNDS__", str(s["done_rounds"]))
         html = html.replace("__TOTAL_ROUNDS__", str(s["total_rounds"]))
         html = html.replace("__RATE__", f"{s['rate']:.1f}")
+        html = html.replace("__TODAY_AC__", str(s.get("today_ac", 0)))
         html = html.replace("__DONE_ALL__", str(s["done_problems"]))
         html = html.replace("__TOTAL__", str(s["total"]))
         html = html.replace("__STREAK__", str(s["streak"]))

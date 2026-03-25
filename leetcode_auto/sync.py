@@ -5,6 +5,7 @@
 更新刷题进度并检测代码优化空间。
 """
 
+import json
 import os
 import platform
 import re
@@ -14,11 +15,13 @@ import sys
 from datetime import datetime, timezone, timedelta
 
 from .config import (
+    DATA_DIR,
     PLAN_DIR,
     PROGRESS_FILE,
     CHECKIN_FILE,
     DASHBOARD_FILE,
     OPTIMIZE_FILE,
+    load_plan_config,
 )
 from .progress import (
     ROUND_KEYS, REVIEW_INTERVALS,
@@ -34,9 +37,12 @@ from .leetcode_api import (
     fetch_recent_ac, fetch_recent_all, filter_today_ac, detect_struggles,
     fetch_submission_detail,
     analyze_submissions_for_optimization,
+    fetch_accepted_history,
 )
 
 CST = timezone(timedelta(hours=8))
+HISTORY_MARKER = "历史"
+_HISTORY_SYNC_FILE = DATA_DIR / "history_sync.json"
 
 
 # ---------------------------------------------------------------------------
@@ -51,25 +57,18 @@ def _next_day_num(filepath) -> int:
     return max(nums) + 1 if nums else 1
 
 
-def update_checkin(
-    filepath, today_str: str,
-    new_problems: list[str], review_problems: list[str],
+def _render_checkin_entry(
+    today_str: str,
+    day_num: int,
+    new_problems: list[str],
+    review_problems: list[str],
     struggles: list[str],
-):
-    with open(filepath, "r", encoding="utf-8") as f:
-        content = f.read()
-
-    if f"## {today_str}" in content:
-        print(f"  今日（{today_str}）打卡记录已存在，跳过写入")
-        return
-
-    day_num = _next_day_num(filepath)
+) -> str:
     new_str = "、".join(new_problems) if new_problems else "无"
     review_str = "、".join(review_problems) if review_problems else "无"
     struggle_str = "、".join(struggles) if struggles else "无"
     total = len(new_problems) + len(review_problems)
-
-    entry = (
+    return (
         f"\n## {today_str}（Day {day_num}）\n"
         f"- 新题完成：{new_str}（{len(new_problems)} 题）\n"
         f"- 复习完成：{review_str}（{len(review_problems)} 题）\n"
@@ -79,11 +78,102 @@ def update_checkin(
         f"\n---\n\n"
     )
 
-    hint_marker = "> 使用方式"
-    if hint_marker in content:
-        content = content.replace(hint_marker, entry + hint_marker)
+
+def _collect_today_progress(rows: list[dict], today_str: str) -> tuple[list[str], list[str]]:
+    """汇总整张进度表中今天完成的题目，避免重复同步后打卡数据归零。"""
+    new_problems: list[str] = []
+    review_problems: list[str] = []
+
+    for row in rows:
+        title = _display_title(row["title"])
+        if row.get("r1") == today_str:
+            new_problems.append(title)
+            continue
+        if any(row.get(rk) == today_str for rk in ROUND_KEYS[1:]):
+            review_problems.append(title)
+
+    return new_problems, review_problems
+
+
+def _load_history_sync_state() -> dict:
+    if not _HISTORY_SYNC_FILE.exists():
+        return {}
+    try:
+        return json.loads(_HISTORY_SYNC_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def _save_history_sync_state(username: str):
+    state = {
+        "username": username,
+        "problem_list": load_plan_config().get("problem_list", "hot100"),
+        "saved_at": datetime.now(CST).isoformat(),
+    }
+    _HISTORY_SYNC_FILE.write_text(
+        json.dumps(state, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+
+def _needs_history_backfill(username: str) -> bool:
+    state = _load_history_sync_state()
+    current_list = load_plan_config().get("problem_list", "hot100")
+    return (
+        state.get("username") != username
+        or state.get("problem_list") != current_list
+    )
+
+
+def _backfill_history_progress(rows: list[dict], history_slugs: set[str]) -> list[str]:
+    """把历史 AC 回填到 R1，作为整体进度基线，不影响今日 AC 和复习到期。"""
+    imported_titles: list[str] = []
+
+    for row in rows:
+        slug = row.get("title_slug", "")
+        if slug not in history_slugs:
+            continue
+        if any(_is_round_done(row.get(rk, "")) for rk in ROUND_KEYS):
+            continue
+
+        row["r1"] = HISTORY_MARKER
+        row["status"] = "进行中"
+        row["last_date"] = ""
+        imported_titles.append(_display_title(row["title"]))
+
+    return imported_titles
+
+
+def update_checkin(
+    filepath, today_str: str,
+    new_problems: list[str], review_problems: list[str],
+    struggles: list[str],
+):
+    with open(filepath, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    pattern = re.compile(
+        rf"\n?## {re.escape(today_str)}（Day (\d+)）\n.*?\n---\n\n?",
+        re.DOTALL,
+    )
+    match = pattern.search(content)
+    if match:
+        day_num = int(match.group(1))
+        entry = _render_checkin_entry(
+            today_str, day_num, new_problems, review_problems, struggles,
+        )
+        content = pattern.sub(entry, content, count=1)
+        print(f"  今日（{today_str}）打卡记录已更新")
     else:
-        content = content.rstrip("\n") + "\n" + entry
+        day_num = _next_day_num(filepath)
+        entry = _render_checkin_entry(
+            today_str, day_num, new_problems, review_problems, struggles,
+        )
+        hint_marker = "> 使用方式"
+        if hint_marker in content:
+            content = content.replace(hint_marker, entry + hint_marker)
+        else:
+            content = content.rstrip("\n") + "\n" + entry
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(content)
@@ -219,14 +309,38 @@ def sync(interactive: bool = True):
         print(f"   获取失败: {e}")
         sys.exit(1)
 
+    print("\n2. 正在解析进度表...")
+    header_lines, rows = parse_progress_table(PROGRESS_FILE)
+    hot100_slugs = {r["title_slug"] for r in rows if r["title_slug"]}
+
+    imported_titles: list[str] = []
+    if _needs_history_backfill(username):
+        print("   正在回填历史 AC 基线...")
+        try:
+            history_slugs = fetch_accepted_history(
+                creds["session"], creds["csrf"], hot100_slugs,
+            )
+            imported_titles = _backfill_history_progress(rows, history_slugs)
+            _save_history_sync_state(username)
+            print(
+                f"   历史 Hot100 AC {len(history_slugs)} 道，"
+                f"本地新增基线 {len(imported_titles)} 道"
+            )
+        except Exception as e:
+            print(f"   历史基线回填失败：{e}")
+
     today_subs = filter_today_ac(all_ac)
-    print(f"   今日共 {len(today_subs)} 道 AC 提交")
+    print(f"\n3. 今日共 {len(today_subs)} 道 AC 提交")
 
     if not today_subs:
+        if imported_titles:
+            write_progress_table(PROGRESS_FILE, header_lines, rows)
+            review_due = _get_review_due(rows, today_date)
+            update_dashboard(DASHBOARD_FILE, rows, 0, review_due)
         print("\n今日暂无 AC 提交，无需更新。")
         return
 
-    print("\n2. 正在检测卡点题目...")
+    print("\n4. 正在检测卡点题目...")
     all_subs = fetch_recent_all(username, creds["session"], creds["csrf"])
     ac_slugs = {s["titleSlug"] for s in today_subs}
     struggles = detect_struggles(all_subs, ac_slugs)
@@ -235,32 +349,40 @@ def sync(interactive: bool = True):
     else:
         print("   无卡点题目")
 
-    print("\n3. 正在解析进度表...")
-    header_lines, rows = parse_progress_table(PROGRESS_FILE)
-    hot100_slugs = {r["title_slug"] for r in rows if r["title_slug"]}
-
+    print("\n5. 正在筛选题单命中...")
     matched_slugs = {s["titleSlug"] for s in today_subs if s["titleSlug"] in hot100_slugs}
     print(f"   今日 AC 中 {len(matched_slugs)} 道属于 Hot100")
 
     if not matched_slugs:
+        if imported_titles:
+            write_progress_table(PROGRESS_FILE, header_lines, rows)
+            review_due = _get_review_due(rows, today_date)
+            update_dashboard(DASHBOARD_FILE, rows, 0, review_due)
         print("\n今日 AC 题目均不在 Hot100 范围内，无需更新。")
         return
 
-    print("\n4. 正在更新进度表...")
+    print("\n6. 正在更新进度表...")
     new_problems, review_problems, filled_rounds = update_progress(rows, matched_slugs, today_str)
     write_progress_table(PROGRESS_FILE, header_lines, rows)
     print(f"   新题 {len(new_problems)} 道：{', '.join(new_problems) or '无'}")
     print(f"   复习 {len(review_problems)} 道：{', '.join(review_problems) or '无'}")
 
-    print("\n5. 正在更新每日打卡...")
+    print("\n7. 正在更新每日打卡...")
     hot100_struggles = [s for s in struggles if any(
         s == _display_title(r["title"]) for r in rows if r["title_slug"] in matched_slugs
     )]
-    update_checkin(CHECKIN_FILE, today_str, new_problems, review_problems, hot100_struggles)
+    today_new_problems, today_review_problems = _collect_today_progress(rows, today_str)
+    update_checkin(
+        CHECKIN_FILE,
+        today_str,
+        today_new_problems,
+        today_review_problems,
+        hot100_struggles,
+    )
     print("   已写入打卡记录")
 
-    print("\n6. 正在更新进度看板...")
-    today_count = len(new_problems) + len(review_problems)
+    print("\n8. 正在更新进度看板...")
+    today_count = len(today_new_problems) + len(today_review_problems)
     review_due = _get_review_due(rows, today_date)
     update_dashboard(DASHBOARD_FILE, rows, today_count, review_due)
     stats = _compute_stats(rows)
@@ -268,7 +390,7 @@ def sync(interactive: bool = True):
     if review_due:
         print(f"   明日待复习：{len(review_due)} 题")
 
-    print("\n7. 正在分析提交代码优化空间...")
+    print("\n9. 正在分析提交代码优化空间...")
     hot100_today_subs = [s for s in today_subs if s["titleSlug"] in matched_slugs]
     optimizations = analyze_submissions_for_optimization(
         creds["session"], creds["csrf"], hot100_today_subs,
@@ -278,7 +400,7 @@ def sync(interactive: bool = True):
         from .config import get_ai_config
         ai_config = get_ai_config()
         if ai_config["enabled"]:
-            print(f"\n8. AI 深度分析（{ai_config['provider']}/{ai_config['model']}）...")
+            print(f"\n10. AI 深度分析（{ai_config['provider']}/{ai_config['model']}）...")
             from .ai_analyzer import batch_analyze
             optimizations = batch_analyze(
                 optimizations, creds["session"], creds["csrf"],
@@ -294,7 +416,7 @@ def sync(interactive: bool = True):
     from .config import get_ai_config
     ai_cfg = get_ai_config()
     if ai_cfg["enabled"] and filled_rounds:
-        step = 9 if optimizations else 8
+        step = 11 if optimizations else 10
         print(f"\n{step}. 逐题 AI 分析（{len(filled_rounds)} 道）...")
         from .ai_analyzer import call_ai
         from .problem_data import add_ai_review
@@ -323,7 +445,7 @@ def sync(interactive: bool = True):
             except Exception:
                 continue
 
-    msg = f"新题 {len(new_problems)} 道，复习 {len(review_problems)} 道"
+    msg = f"新题 {len(today_new_problems)} 道，复习 {len(today_review_problems)} 道"
     if hot100_struggles:
         msg += f"，卡点 {len(hot100_struggles)} 道"
     if optimizations:
