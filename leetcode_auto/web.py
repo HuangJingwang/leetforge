@@ -378,11 +378,17 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .today-list li:last-child { border:none; }
 .today-list a { color:var(--accent); text-decoration:none; }
 .today-list a:hover { text-decoration:underline; }
+.today-main { display:flex; flex-direction:column; gap:6px; min-width:0; flex:1; padding-right:12px; }
+.today-main a { overflow-wrap:anywhere; }
 .today-meta { display:flex; gap:8px; align-items:center; }
 .today-meta .tag { font-size:11px; padding:1px 6px; border-radius:3px; }
 .tag-review { background:rgba(248,81,73,0.12); color:var(--red); }
 .tag-new { background:rgba(88,166,255,0.12); color:var(--accent); }
 .tag-cat { background:rgba(139,148,158,0.12); color:var(--dim); }
+.tag-solution { background:rgba(210,153,34,0.15); color:var(--yellow); }
+.solution-btn { background:none; border:1px solid var(--border); color:var(--dim); padding:4px 10px; border-radius:999px; font-size:11px; cursor:pointer; transition:all var(--transition); white-space:nowrap; }
+.solution-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+.solution-btn.active { background:rgba(210,153,34,0.15); border-color:rgba(210,153,34,0.45); color:var(--yellow); }
 
 /* Resume */
 .resume-layout { display:grid; grid-template-columns:1fr 1fr; gap:16px; height:calc(100vh - 120px); }
@@ -961,7 +967,7 @@ var I18N={
     nav_achievements:'成就',
     export_csv:'导出 CSV',
     focus_mode:'专项突破',focus_select:'选择薄弱分类',
-    notes_ph:'添加笔记...',notes_save:'保存笔记',
+    notes_ph:'添加笔记...',notes_save:'保存笔记',solution_viewed:'看过题解',solution_unviewed:'未看题解',
     achievement_streak7:'连续打卡 7 天',achievement_streak30:'连续打卡 30 天',
     achievement_r1_all:'R1 全部完成',achievement_r1_half:'R1 完成一半',
     shortcut_hint:'快捷键：1-9 切换标签页',
@@ -1007,7 +1013,7 @@ var I18N={
     nav_achievements:'Achievements',
     export_csv:'Export CSV',
     focus_mode:'Focus Mode',focus_select:'Select weak category',
-    notes_ph:'Add notes...',notes_save:'Save Note',
+    notes_ph:'Add notes...',notes_save:'Save Note',solution_viewed:'Viewed Solution',solution_unviewed:'No Solution Viewed',
     achievement_streak7:'7-day streak',achievement_streak30:'30-day streak',
     achievement_r1_all:'R1 all done',achievement_r1_half:'R1 half done',
     shortcut_hint:'Shortcuts: 1-9 to switch tabs',
@@ -1281,7 +1287,19 @@ window.addEventListener('resize',function(){
 });
 
 // ====== Today's Plan ======
-(function(){
+function ensureProblemDataEntry(slug){
+  if(!D.problem_data) D.problem_data={};
+  if(!D.problem_data[slug]){
+    D.problem_data[slug]={notes:'',time_spent:[],ai_reviews:[],solution_viewed:false};
+  } else if(typeof D.problem_data[slug].solution_viewed==='undefined'){
+    D.problem_data[slug].solution_viewed=false;
+  }
+  return D.problem_data[slug];
+}
+function solutionViewedText(viewed){
+  return t(viewed?'solution_viewed':'solution_unviewed');
+}
+function renderTodayPlan(){
   // New todos (R1 not done)
   var newList=document.getElementById('today-new');
   var newCount=document.getElementById('new-count');
@@ -1293,8 +1311,13 @@ window.addEventListener('resize',function(){
     var h='';
     todos.forEach(function(item){
       var dc=item.difficulty==='简单'?'diff-easy':item.difficulty==='困难'?'diff-hard':'diff-medium';
-      h+='<li><a href="https://leetcode.cn/problems/'+item.slug+'/" target="_blank">'+item.title+'</a>'
-        +'<div class="today-meta"><span class="tag tag-cat">'+item.category+'</span><span class="tag '+dc+'">'+item.difficulty+'</span></div></li>';
+      var pdata=ensureProblemDataEntry(item.slug);
+      var viewed=!!pdata.solution_viewed;
+      h+='<li><div class="today-main">'
+        +'<a href="https://leetcode.cn/problems/'+item.slug+'/" target="_blank">'+item.title+'</a>'
+        +'<div class="today-meta"><span class="tag tag-cat">'+item.category+'</span><span class="tag '+dc+'">'+item.difficulty+'</span>'+(viewed?'<span class="tag tag-solution">'+t('solution_viewed')+'</span>':'')+'</div>'
+        +'</div>'
+        +'<button class="solution-btn'+(viewed?' active':'')+'" onclick="toggleSolutionViewed(event,\''+item.slug+'\')">'+solutionViewedText(viewed)+'</button></li>';
     });
     newList.innerHTML=h;
   }
@@ -1314,7 +1337,25 @@ window.addEventListener('resize',function(){
     });
     revList.innerHTML=h;
   }
-})();
+}
+function setSolutionViewed(slug, viewed){
+  ensureProblemDataEntry(slug).solution_viewed=!!viewed;
+}
+function toggleSolutionViewed(event, slug){
+  if(event){event.preventDefault();event.stopPropagation();}
+  var current=!!ensureProblemDataEntry(slug).solution_viewed;
+  var next=!current;
+  fetch('/api/problem',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action:'set_solution_viewed',slug:slug,viewed:next})
+  }).then(function(r){return r.json()}).then(function(data){
+    if(data&&data.ok){
+      setSolutionViewed(slug, next);
+      renderTodayPlan();
+      renderTable();
+    }
+  }).catch(function(){});
+}
+renderTodayPlan();
 
 // ====== Progress Table ======
 var diffMap={'easy':'Easy','medium':'Medium','hard':'Hard'};
@@ -2116,7 +2157,6 @@ function renderTable(){
     .replace('{rounds}', D.total_rounds||0)
     .replace('{shown}', filtered.length)
     .replace('{total}', D.rows.length);
-  var pd=D.problem_data||{};
   var html='';
   var rKeys3=[];
   if(D.rows.length>0){Object.keys(D.rows[0]).forEach(function(k){if(k.match(/^r\d+$/))rKeys3.push(k)});rKeys3.sort();}
@@ -2129,16 +2169,18 @@ function renderTable(){
     var statusClass=r.status==='已完成'?'status-done':'status-progress';
     var statusText=r.status||'-';
     var roundCells=rKeys3.map(function(k){return rc(r[k])}).join('');
+    var pdata=ensureProblemDataEntry(r.slug);
+    var viewed=!!pdata.solution_viewed;
+    var solutionTag=viewed?'<span class="tag tag-solution" style="margin-left:8px">'+t('solution_viewed')+'</span>':'';
     html+='<tr style="cursor:pointer" data-slug="'+r.slug+'">'
       +'<td>'+r.num+'</td>'
-      +'<td><a href="https://leetcode.cn/problems/'+r.slug+'/" target="_blank" onclick="event.stopPropagation()">'+r.title+'</a></td>'
+      +'<td><a href="https://leetcode.cn/problems/'+r.slug+'/" target="_blank" onclick="event.stopPropagation()">'+r.title+'</a>'+solutionTag+'</td>'
       +'<td class="'+diffClass+'">'+r.difficulty+'</td>'
       +'<td><span class="cat-tag">'+r.category+'</span></td>'
       +roundCells
       +'<td class="'+statusClass+'">'+statusText+'</td>'
       +'</tr>';
     // Note row
-    var pdata=pd[r.slug]||{};
     var note=pdata.notes||'';
     var reviews=pdata.ai_reviews||[];
     var reviewHtml='';
@@ -2149,7 +2191,7 @@ function renderTable(){
     }
     html+='<tr class="note-row"><td colspan="'+(4+rKeys3.length+1)+'">'
       +'<textarea class="note-textarea" data-slug="'+r.slug+'" placeholder="'+t('notes_ph')+'">'+note.replace(/</g,'&lt;')+'</textarea>'
-      +'<div class="note-actions"><button class="note-save-btn" onclick="saveNote(this)" data-i18n="notes_save">'+t('notes_save')+'</button></div>'
+      +'<div class="note-actions"><button class="note-save-btn" onclick="saveNote(this)" data-i18n="notes_save">'+t('notes_save')+'</button><button class="solution-btn'+(viewed?' active':'')+'" onclick="toggleSolutionViewed(event,\''+r.slug+'\')">'+solutionViewedText(viewed)+'</button></div>'
       +reviewHtml
       +'</td></tr>';
   });
@@ -2456,12 +2498,15 @@ def serve_web(
                 except (json.JSONDecodeError, ValueError):
                     req = {}
                 action = req.get("action", "")
-                from .problem_data import save_note, add_time_spent
+                from .problem_data import save_note, add_time_spent, set_solution_viewed
                 if action == "save_note":
                     save_note(req.get("slug", ""), req.get("note", ""))
                     result = {"ok": True}
                 elif action == "add_time":
                     add_time_spent(req.get("slug", ""), req.get("seconds", 0))
+                    result = {"ok": True}
+                elif action == "set_solution_viewed":
+                    set_solution_viewed(req.get("slug", ""), req.get("viewed", False))
                     result = {"ok": True}
                 else:
                     result = {"error": "unknown"}
