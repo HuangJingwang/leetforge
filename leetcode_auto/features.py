@@ -536,3 +536,42 @@ def generate_weekly_report(rows, checkin_data: list[dict],
     filepath = target_dir / f"周报_{week_start.strftime('%m%d')}-{week_end.strftime('%m%d')}.md"
     filepath.write_text(content, encoding="utf-8")
     return filepath
+
+
+def push_report(content: str):
+    """Push weekly report via webhook and/or email."""
+    from .config import WEBHOOK_URL, SMTP_HOST, SMTP_USER, SMTP_PASS, SMTP_TO, SMTP_PORT
+    import requests as _req
+
+    sent = False
+
+    # Webhook (Slack / 飞书 / 企微)
+    if WEBHOOK_URL:
+        try:
+            _req.post(WEBHOOK_URL, json={"text": content, "msg_type": "text",
+                                          "content": {"text": content}}, timeout=10)
+            print("  Webhook sent.")
+            sent = True
+        except Exception as e:
+            print(f"  Webhook failed: {e}")
+
+    # Email
+    if SMTP_HOST and SMTP_USER and SMTP_TO:
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            msg = MIMEText(content, "plain", "utf-8")
+            msg["Subject"] = "BrushUp Weekly Report"
+            msg["From"] = SMTP_USER
+            msg["To"] = SMTP_TO
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+                s.starttls()
+                s.login(SMTP_USER, SMTP_PASS)
+                s.sendmail(SMTP_USER, [SMTP_TO], msg.as_string())
+            print("  Email sent.")
+            sent = True
+        except Exception as e:
+            print(f"  Email failed: {e}")
+
+    if not sent:
+        print("  No push method configured. Set WEBHOOK_URL or SMTP_* in ~/.leetcode_auto/.env")

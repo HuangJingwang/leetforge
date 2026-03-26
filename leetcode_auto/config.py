@@ -10,7 +10,10 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 load_dotenv(DATA_DIR / ".env")
 
-LEETCODE_API_URL = "https://leetcode.cn/graphql/"
+# LeetCode 站点：cn (中国站) 或 us (国际站)
+LEETCODE_SITE = os.getenv("LEETCODE_SITE", "cn").lower()
+LEETCODE_API_URL = "https://leetcode.com/graphql/" if LEETCODE_SITE == "us" else "https://leetcode.cn/graphql/"
+LEETCODE_BASE_URL = "https://leetcode.com" if LEETCODE_SITE == "us" else "https://leetcode.cn"
 COOKIES_FILE = DATA_DIR / "cookies.json"
 
 # 数据文件统一存放在 DATA_DIR/data 下，不再在桌面创建文件
@@ -27,6 +30,14 @@ AI_PROVIDER = os.getenv("AI_PROVIDER", "").lower()         # "claude" or "openai
 AI_API_KEY = os.getenv("AI_API_KEY", "")
 AI_MODEL = os.getenv("AI_MODEL", "")                       # 留空则使用默认模型
 AI_BASE_URL = os.getenv("AI_BASE_URL", "")                 # 自定义 API 地址（可选）
+
+# 周报推送
+WEBHOOK_URL = os.getenv("WEBHOOK_URL", "")                   # Slack/飞书/企微 webhook
+SMTP_HOST = os.getenv("SMTP_HOST", "")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER", "")
+SMTP_PASS = os.getenv("SMTP_PASS", "")
+SMTP_TO = os.getenv("SMTP_TO", "")                           # 收件人邮箱
 
 
 def get_ai_config() -> dict:

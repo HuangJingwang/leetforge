@@ -184,6 +184,7 @@ def _build_comprehensive_data(
         "plan_config": load_plan_config(),
         "ai_usage": __import__('leetcode_auto.ai_analyzer', fromlist=['get_ai_usage']).get_ai_usage(),
         "user_profile": __import__('leetcode_auto.leetcode_api', fromlist=['load_user_profile']).load_user_profile(),
+        "struggles": __import__('leetcode_auto.leetcode_api', fromlist=['load_struggle_notebook']).load_struggle_notebook(),
         "trend_stats": _compute_trends(checkin_data),
         "available_lists": {k: {"name": v["name"], "name_en": v["name_en"], "count": len(v["problems"])} for k, v in __import__('leetcode_auto.problem_lists', fromlist=['PROBLEM_LISTS']).PROBLEM_LISTS.items()},
         "problem_data": get_all_problem_data(),
@@ -1035,6 +1036,7 @@ const D = __DATA_JSON__;
     syncSep.style.display='';
   }
   syncNav.addEventListener('click',function(){
+    if(!confirm('Sync now? This will fetch latest submissions from LeetCode.')) return;
     syncText.textContent='Syncing...';
     syncNav.style.pointerEvents='none';
     syncNav.style.opacity='0.5';

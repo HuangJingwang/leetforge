@@ -13,7 +13,7 @@ from typing import Optional
 
 import requests
 
-from .config import get_ai_config, LEETCODE_API_URL
+from .config import get_ai_config, LEETCODE_API_URL, LEETCODE_BASE_URL
 
 # ---------------------------------------------------------------------------
 # 获取 LeetCode 官方题解
@@ -40,7 +40,7 @@ def fetch_official_solution(
     """获取题目描述和官方题解。"""
     headers = {
         "Content-Type": "application/json",
-        "Referer": "https://leetcode.cn",
+        "Referer": LEETCODE_BASE_URL,
         "Cookie": f"LEETCODE_SESSION={session}; csrftoken={csrf}",
         "x-csrftoken": csrf,
     }

@@ -9,7 +9,7 @@ from typing import Optional
 
 import requests
 
-from .config import LEETCODE_API_URL, COOKIES_FILE, DATA_DIR, load_credentials
+from .config import LEETCODE_API_URL, LEETCODE_BASE_URL, COOKIES_FILE, DATA_DIR, load_credentials
 
 CST = timezone(timedelta(hours=8))
 
@@ -43,7 +43,7 @@ def check_session(session: str, csrf: str) -> SessionCheckResult:
     """
     headers = {
         "Content-Type": "application/json",
-        "Referer": "https://leetcode.cn",
+        "Referer": LEETCODE_BASE_URL,
         "Cookie": f"LEETCODE_SESSION={session}; csrftoken={csrf}",
         "x-csrftoken": csrf,
     }
@@ -138,7 +138,7 @@ def browser_login() -> dict:
             window.chrome = { runtime: {} };
         """)
         page = context.new_page()
-        page.goto("https://leetcode.cn/accounts/login/")
+        page.goto(f"{LEETCODE_BASE_URL}/accounts/login/")
 
         print("请在浏览器中完成登录（支持账号密码、微信、GitHub、QQ 等方式）", flush=True)
         print("登录成功后会自动检测，无需手动操作...\n", flush=True)
@@ -149,7 +149,7 @@ def browser_login() -> dict:
         csrf_val = ""
         while _time.time() < deadline:
             try:
-                for c in context.cookies("https://leetcode.cn"):
+                for c in context.cookies(LEETCODE_BASE_URL):
                     if c["name"] == "LEETCODE_SESSION":
                         session_val = c["value"]
                     elif c["name"] == "csrftoken":
@@ -234,7 +234,7 @@ query submissionList($offset: Int!, $limit: Int!, $questionSlug: String!) {
 def _make_headers(session: str, csrf: str) -> dict:
     return {
         "Content-Type": "application/json",
-        "Referer": "https://leetcode.cn",
+        "Referer": LEETCODE_BASE_URL,
         "Cookie": f"LEETCODE_SESSION={session}; csrftoken={csrf}",
         "x-csrftoken": csrf,
     }
@@ -431,11 +431,12 @@ def filter_today_ac(submissions: list[dict]) -> list[dict]:
     return result
 
 
-def detect_struggles(all_subs: list[dict], ac_slugs: set[str]) -> list[str]:
-    """检测今日多次提交才 AC 的题目（>=3 次尝试），返回题名列表。"""
+def detect_struggles(all_subs: list[dict], ac_slugs: set[str], threshold: int = 2) -> list[str]:
+    """检测今日多次提交才 AC 的题目（>=threshold 次尝试），返回题名列表。"""
     today_start = datetime.now(CST).replace(hour=0, minute=0, second=0, microsecond=0)
     attempt_count: dict[str, int] = {}
     slug_to_title: dict[str, str] = {}
+    slug_map: dict[str, int] = {}
     for sub in all_subs:
         ts = datetime.fromtimestamp(int(sub["timestamp"]), tz=CST)
         if ts < today_start:
@@ -443,8 +444,53 @@ def detect_struggles(all_subs: list[dict], ac_slugs: set[str]) -> list[str]:
         slug = sub["titleSlug"]
         attempt_count[slug] = attempt_count.get(slug, 0) + 1
         slug_to_title[slug] = sub.get("title", slug)
-    return [
+    struggles = [
         slug_to_title[slug]
         for slug in ac_slugs
-        if attempt_count.get(slug, 0) >= 3
+        if attempt_count.get(slug, 0) >= threshold
     ]
+    # Save to struggle notebook
+    if struggles:
+        _save_struggles(struggles, attempt_count, slug_to_title, ac_slugs)
+    return struggles
+
+
+_STRUGGLE_FILE = DATA_DIR / "struggle_notebook.json"
+
+
+def _save_struggles(titles, attempt_count, slug_to_title, ac_slugs):
+    """Save struggle problems to persistent notebook."""
+    import json
+    from datetime import date
+    existing = load_struggle_notebook()
+    today = date.today().isoformat()
+    for slug in ac_slugs:
+        attempts = attempt_count.get(slug, 0)
+        if attempts >= 2:
+            title = slug_to_title.get(slug, slug)
+            existing.append({
+                "date": today,
+                "slug": slug,
+                "title": title,
+                "attempts": attempts,
+            })
+    # Dedupe by (date, slug)
+    seen = set()
+    deduped = []
+    for e in existing:
+        key = (e["date"], e["slug"])
+        if key not in seen:
+            seen.add(key)
+            deduped.append(e)
+    _STRUGGLE_FILE.write_text(json.dumps(deduped, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_struggle_notebook() -> list:
+    """Load all struggle problems."""
+    import json
+    if _STRUGGLE_FILE.exists():
+        try:
+            return json.loads(_STRUGGLE_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, IOError):
+            pass
+    return []

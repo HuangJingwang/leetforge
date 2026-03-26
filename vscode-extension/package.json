@@ -1,0 +1,30 @@
+{
+  "name": "brushup",
+  "displayName": "BrushUp",
+  "description": "LeetCode study tracker - progress, review reminders, AI insights",
+  "version": "0.1.0",
+  "publisher": "brushup",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "brushup", "title": "BrushUp", "icon": "$(book)" }
+      ]
+    },
+    "views": {
+      "brushup": [
+        { "id": "brushup.stats", "name": "Stats" },
+        { "id": "brushup.review", "name": "Review Due" },
+        { "id": "brushup.struggles", "name": "Struggles" }
+      ]
+    },
+    "commands": [
+      { "command": "brushup.sync", "title": "BrushUp: Sync Now" },
+      { "command": "brushup.openWeb", "title": "BrushUp: Open Web Dashboard" },
+      { "command": "brushup.refresh", "title": "BrushUp: Refresh" }
+    ]
+  }
+}

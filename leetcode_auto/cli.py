@@ -215,6 +215,48 @@ def cmd_remind_daemon(arg: str):
         install_remind_daemon()
 
 
+def cmd_report_push():
+    """Generate weekly report and push via webhook/email."""
+    from .features import generate_weekly_report, parse_checkin_data, push_report
+    ensure_plan_files(PLAN_DIR, PROGRESS_FILE, CHECKIN_FILE, DASHBOARD_FILE)
+    _, rows = parse_progress_table(PROGRESS_FILE)
+    stats = _compute_stats(rows)
+    checkin_data = parse_checkin_data(CHECKIN_FILE)
+    path = generate_weekly_report(rows, checkin_data, stats)
+    print(f"Report generated: {path}")
+    content = path.read_text(encoding="utf-8")
+    push_report(content)
+
+
+def cmd_export(filepath: str):
+    """Export all data to a zip file."""
+    import zipfile
+    from .config import DATA_DIR
+    with zipfile.ZipFile(filepath, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for f in DATA_DIR.rglob('*'):
+            if f.is_file() and '.egg' not in str(f):
+                zf.write(f, f.relative_to(DATA_DIR))
+    print(f"Data exported to {filepath}")
+    print(f"Contains {len(list(DATA_DIR.rglob('*')))} files from {DATA_DIR}")
+
+
+def cmd_import(filepath: str):
+    """Import data from a zip file."""
+    import zipfile
+    from .config import DATA_DIR
+    if not os.path.exists(filepath):
+        print(f"File not found: {filepath}")
+        sys.exit(1)
+    resp = input(f"This will overwrite data in {DATA_DIR}. Continue? [y/N] ")
+    if resp.lower() != 'y':
+        print("Cancelled.")
+        return
+    with zipfile.ZipFile(filepath, 'r') as zf:
+        zf.extractall(DATA_DIR)
+    print(f"Data imported from {filepath}")
+    print(f"Extracted to {DATA_DIR}")
+
+
 def cmd_chat():
     """交互式 AI 对话，询问刷题进度和建议。"""
     from .config import get_ai_config
@@ -382,6 +424,12 @@ def main():
                         help="每日提醒定时任务（10:00/17:00/22:00）：start/status/stop")
     parser.add_argument("--cron", metavar="HH:MM",
                         help="前台定时同步（终端保持运行）")
+    parser.add_argument("--report-push", action="store_true",
+                        help="Generate and push weekly report (webhook/email)")
+    parser.add_argument("--export", metavar="FILE",
+                        help="Export all data to a zip file")
+    parser.add_argument("--import-data", metavar="FILE",
+                        help="Import data from a zip file")
     args = parser.parse_args()
 
     if args.login:
@@ -408,6 +456,12 @@ def main():
         cmd_daemon(args.daemon)
     elif args.remind_daemon is not None:
         cmd_remind_daemon(args.remind_daemon)
+    elif args.report_push:
+        cmd_report_push()
+    elif args.export:
+        cmd_export(args.export)
+    elif args.import_data:
+        cmd_import(args.import_data)
     elif args.cron:
         cron_loop(args.cron)
     else:
