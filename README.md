@@ -47,21 +47,42 @@ leetcode --web     # opens web dashboard, login from browser
 
 ## Web Dashboard
 
-`leetcode --web` opens a local dashboard with 9 tabs:
+`leetcode --web` opens a local dashboard. EN/ZH toggle, dark/light theme, keyboard shortcuts (1-9), 30s auto-refresh, mobile responsive.
 
-| Tab | What's in it |
-|:----|:-------------|
-| **Dashboard** | Stats cards, today's tasks, completion gauge, round progress, category radar, daily trend, GitHub-style heatmap, review calendar, trend analysis |
-| **AI Chat** | Study assistant with full context of your progress |
-| **Progress** | Full problem table with search, multi-filter, notes, per-round AI review history, CSV export |
-| **Review** | Today's due problems sorted by overdue days |
-| **Check-in** | Daily timeline + 30-day trend chart |
-| **Optimize** | AI code analysis: complexity comparison, suggestions, rewritten code |
-| **Resume** | Template download, LapisCV preview, AI analysis, chat-to-edit, version history |
-| **Mock Interview** | Generated questions + AI interviewer + evaluation report |
-| **Settings** | Problem list, rounds, intervals, deadline, daily pace calculator |
+### Dashboard
+Stats, today's tasks, completion gauge, round progress, category radar, heatmap, review calendar, trends.
 
-Features: EN/ZH toggle, dark/light theme, keyboard shortcuts (1-9), 30s auto-refresh, mobile responsive, login/logout from browser.
+![Dashboard](screenshots/dashboard.png)
+
+### Progress
+Full problem table with search, multi-filter, notes, per-round AI review history, CSV export.
+
+![Progress](screenshots/progress.png)
+
+### AI Chat
+Study assistant with full context of your progress, cross-scene shared memory.
+
+![AI Chat](screenshots/chat.png)
+
+### Review
+Today's due problems sorted by overdue days.
+
+![Review](screenshots/review.png)
+
+### Resume
+Template download, LapisCV preview, AI analysis, chat-to-edit, version history, multiple profiles.
+
+![Resume](screenshots/resume.png)
+
+### Mock Interview
+Generated questions from resume + AI interviewer + evaluation report.
+
+![Mock Interview](screenshots/interview.png)
+
+### Settings
+Problem list, rounds, intervals, deadline, daily pace calculator, AI usage stats.
+
+![Settings](screenshots/settings.png)
 
 ## Key features
 
