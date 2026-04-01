@@ -9,10 +9,13 @@ _scheduler_task: Optional[asyncio.Task] = None
 
 
 async def _sync_job():
-    """Run sync in thread pool to avoid blocking event loop."""
+    """Run sync in thread pool to avoid blocking event loop.
+
+    Uses quiet=True to suppress desktop notifications for scheduled syncs.
+    """
     from ..sync import sync
     loop = asyncio.get_event_loop()
-    await loop.run_in_executor(None, lambda: sync(interactive=False))
+    await loop.run_in_executor(None, lambda: sync(interactive=False, quiet=True))
 
 
 async def _run_scheduler(interval_minutes: int = 60):
