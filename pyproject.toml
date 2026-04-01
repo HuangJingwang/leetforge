@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brushup"
-version = "2.0.0"
+version = "3.0.0"
 description = "BrushUp — LeetCode 刷题同步、间隔复习、AI 代码分析、简历优化、模拟面试"
 requires-python = ">=3.9"
 dependencies = [
