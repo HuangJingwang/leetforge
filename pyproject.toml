@@ -13,6 +13,9 @@ dependencies = [
     "playwright",
     "schedule",
     "rich",
+    "fastapi",
+    "uvicorn[standard]",
+    "aiosqlite",
 ]
 
 [project.scripts]
