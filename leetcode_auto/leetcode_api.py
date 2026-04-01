@@ -101,9 +101,7 @@ def browser_login() -> dict:
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
-        print("错误：请先安装 playwright")
-        print("  pip install playwright")
-        sys.exit(1)
+        raise RuntimeError("请先安装 playwright: pip install playwright")
 
     print("正在启动浏览器...\n", flush=True)
 
@@ -161,13 +159,12 @@ def browser_login() -> dict:
         if not session_val:
             print("超时（5 分钟内未检测到登录），请重试。", flush=True)
             browser.close()
-            sys.exit(1)
+            raise RuntimeError("登录超时，5 分钟内未检测到登录")
 
         browser.close()
 
     if not session_val:
-        print("未检测到 LEETCODE_SESSION Cookie，登录可能未成功，请重试。", flush=True)
-        sys.exit(1)
+        raise RuntimeError("未检测到 LEETCODE_SESSION Cookie，登录可能未成功")
 
     result = check_session(session_val, csrf_val)
     username = result.username or "unknown"

@@ -313,6 +313,9 @@ body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkM
 .usage-label { font-size:11px; color:var(--dim); margin-top:2px; }
 
 /* Sync button */
+.session-expired-bar { display:none; padding:8px 16px; margin:8px 12px; background:rgba(248,81,73,0.15); border:1px solid rgba(248,81,73,0.3); border-radius:6px; color:var(--red); font-size:11px; line-height:1.4; text-align:center; }
+.session-expired-bar button { background:var(--red); color:#fff; border:none; padding:4px 12px; border-radius:4px; font-size:11px; cursor:pointer; margin-top:4px; }
+.session-expired-bar button:hover { opacity:0.9; }
 .sync-nav { display:flex; align-items:center; gap:10px; padding:8px 20px; cursor:pointer; color:var(--accent); font-size:13px; transition:all var(--transition); border-left:3px solid transparent; }
 .sync-nav:hover { background:var(--card); padding-left:24px; }
 .sync-nav.syncing { opacity:0.5; pointer-events:none; }
@@ -437,6 +440,7 @@ body.light .chat-msg.user .chat-bubble { background:linear-gradient(135deg,#0969
   <div class="user-profile" id="user-login-bar" style="display:none">
     <button id="user-login-btn" class="login-btn">Login LeetCode</button>
   </div>
+  <div class="session-expired-bar" id="session-expired-bar"></div>
   <div class="sync-nav" id="sync-btn-nav" style="display:none">
     <span class="nav-icon">&#128259;</span><span id="sync-btn-text">Sync Now</span>
   </div>
@@ -804,6 +808,7 @@ var I18N={
     nav_achievements:'成就',
     export_csv:'导出 CSV',
     focus_mode:'专项突破',focus_select:'选择薄弱分类',
+    session_expired:'登录已过期，同步功能不可用',session_relogin:'重新登录',
     notes_ph:'添加笔记...',notes_save:'保存笔记',solution_viewed:'看过题解',solution_unviewed:'未看题解',must_repeat:'反复刷',must_repeat_off:'标记反复刷',
     achievement_streak7:'连续打卡 7 天',achievement_streak30:'连续打卡 30 天',
     achievement_r1_all:'R1 全部完成',achievement_r1_half:'R1 完成一半',
@@ -850,6 +855,7 @@ var I18N={
     nav_achievements:'Achievements',
     export_csv:'Export CSV',
     focus_mode:'Focus Mode',focus_select:'Select weak category',
+    session_expired:'Session expired, sync unavailable',session_relogin:'Re-login',
     notes_ph:'Add notes...',notes_save:'Save Note',solution_viewed:'Viewed Solution',solution_unviewed:'No Solution Viewed',must_repeat:'Must Repeat',must_repeat_off:'Mark Repeat',
     achievement_streak7:'7-day streak',achievement_streak30:'30-day streak',
     achievement_r1_all:'R1 all done',achievement_r1_half:'R1 half done',
@@ -897,11 +903,21 @@ const D = __DATA_JSON__;
   var p=D.user_profile;
   var profileEl=document.getElementById('user-profile');
   var loginBar=document.getElementById('user-login-bar');
-  if(p&&p.username){
+  var expiredBar=document.getElementById('session-expired-bar');
+  var sessionValid=D.session_valid!==false;
+  if(p&&p.username&&sessionValid){
     document.getElementById('user-avatar').src=p.avatar||'';
     document.getElementById('user-name').textContent=p.username;
     profileEl.style.display='flex';
     if(!p.avatar) document.getElementById('user-avatar').style.display='none';
+  } else if(p&&p.username&&!sessionValid){
+    // Has profile but session expired
+    document.getElementById('user-avatar').src=p.avatar||'';
+    document.getElementById('user-name').textContent=p.username;
+    profileEl.style.display='flex';
+    if(!p.avatar) document.getElementById('user-avatar').style.display='none';
+    expiredBar.innerHTML=t('session_expired')+'<br><button onclick="document.getElementById(\'user-logout-btn\').click()">'+t('session_relogin')+'</button>';
+    expiredBar.style.display='block';
   } else {
     loginBar.style.display='flex';
   }
@@ -913,7 +929,8 @@ const D = __DATA_JSON__;
   var syncSep=document.getElementById('sync-sep');
   var syncText=document.getElementById('sync-btn-text');
   var p=D.user_profile;
-  if(p&&p.username){
+  var sessionValid=D.session_valid!==false;
+  if(p&&p.username&&sessionValid){
     syncNav.style.display='flex';
     syncSep.style.display='';
   }
