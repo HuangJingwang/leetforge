@@ -705,6 +705,7 @@ def serve_web(
 
         _POST_ROUTES = {
             "/api/login": "_start_login",
+            "/api/logout": "_get_logout",
             "/api/sync": "_start_sync",
             "/api/chat": "_post_chat",
             "/api/chat/history": "_post_chat_history",
