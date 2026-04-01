@@ -17,9 +17,12 @@ async def lifespan(app: FastAPI):
     """Application startup/shutdown lifecycle."""
     from .db.database import init_db
     from .db.migration import migrate_if_needed
+    from .services.scheduler import start_scheduler, stop_scheduler
     init_db()
     migrate_if_needed()
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
 def create_app() -> FastAPI:
